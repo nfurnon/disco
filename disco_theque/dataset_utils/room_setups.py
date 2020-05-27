@@ -44,19 +44,19 @@ class RandomRoomSetup:
                                                                                                    self.h_range,
                                                                                                    self.beta_range)
             # Sensor nodes
-            nodes_centers, n_trials_nodes = self._get_nodes_centers()
+            nodes_centers, n_trials_nodes = self.get_nodes_centers()
             if n_trials_nodes < 100:
                 find_nodes_centers = 0
                 self.nodes_centers = nodes_centers
                 # Sources positions
-                source_positions, n_trials_sources = self._get_source_positions()
+                source_positions, n_trials_sources = self.get_source_positions()
                 if n_trials_sources < 100:
                     self.source_positions = source_positions
                     find_source_positions = 0
             draw_new_config = [find_nodes_centers, find_source_positions]
 
         # Microphone positions
-        self.microphones_positions = self._add_circular_microphones()
+        self.microphones_positions = self.add_circular_microphones()
 
     @staticmethod
     def set_room_dimensions(l_range, w_range, h_range, beta_range):
@@ -73,7 +73,7 @@ class RandomRoomSetup:
 
         return length, width, height, alpha, beta
 
-    def _get_nodes_centers(self):
+    def get_nodes_centers(self):
         """
         Returns the center of the nodes of the array. They are randomly put in the room, under the constraints:
             - at least d_mw + d_mn from thz_se  walls (so that all microphones are at least d_mw from walls)
@@ -130,7 +130,7 @@ class RandomRoomSetup:
 
         return [m1_x, m1_y, z_], [m2_x, m2_y, z_]
 
-    def _get_source_positions(self):
+    def get_source_positions(self):
         """
         Get positions of the sources. They are randomly placed in the room, with the following constraints:
             - at least d_sw from the walls (so that all microphones are at least d_wal from walls)
@@ -179,7 +179,7 @@ class RandomRoomSetup:
                 return sources_positions, n_trials
         return sources_positions, n_trials
 
-    def _add_circular_microphones(self):
+    def add_circular_microphones(self):
         """
         Add the microphones to the room class, by creating circular 2D arrays around the nodes centres.
         The height of microphones is constant at self.z_m.
@@ -263,7 +263,7 @@ class MeetingRoomSetup(RandomRoomSetup):
         self.table_radius = r
         return self.table_center, self.table_radius
 
-    def _get_nodes_centers(self):
+    def get_nodes_centers(self):
         """
         Place the nodes centers on the table
         :return:
@@ -284,7 +284,7 @@ class MeetingRoomSetup(RandomRoomSetup):
 
         return nodes_centers, 0
 
-    def _get_source_positions(self):
+    def get_source_positions(self):
         """
         Place two sources around the table and one third close to a wall. self.node_centers should aready be not None.
         :return:
@@ -366,7 +366,7 @@ class LivingRoomSetup(RandomRoomSetup):
         self.d_mw_min = 0.02  # Hard coded minimal distance of mics to wall
         self.d_nw = self.d_mw - self.d_mn
 
-    def _get_nodes_centers(self):
+    def get_nodes_centers(self):
         """
         Nodes are close to the wall, within d_nw.
         :return:
