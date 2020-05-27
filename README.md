@@ -16,7 +16,7 @@ python dataset_generation/pre_generation/download_freesound_queries.py \
         --min_duration 5.5
 ```
 
-__2. Simulate RIRs and convolve the signals__
+__2. Simulate RIRs and convolve the signals__.
 The argument `--rir_nb` makes it possible to parallelize the process.
 
 Example:
