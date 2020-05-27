@@ -194,7 +194,7 @@ if __name__ == '__main__':
 
     # Instantiate freesound client
     # To get token to *download*, follow https://freesound.org/docs/api/authentication.html#oauth2-authentication
-    token = "wy8IHFphNK1PCYqMqPyR19occYvXRW"
+    token = ""
     n_jobs, chunk_size = 6, 5
     client = freesound.FreesoundClient()
     client.set_token(token, "oauth")
