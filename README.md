@@ -4,18 +4,22 @@ This repository gathers scripts to:
  * [Simulate microphone arrays and their recordings](./dataset_generation/generation) using [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics)
 
 ### To generate the DISCO dataset:
-__1. Download freesound files:__
+__1. Download freesound files__
+
+Example:
 ```
 python dataset_generation/pre_generation/download_freesound_queries.py \
         --download_type parallel \
         --query_by id \
         --file_of_ids dataset_generation/pre_generation/ids_per_category.csv \
-        --save_dir trial \
+        --save_dir ../../dataset/freesound/data/train/ \
         --min_duration 5.5
 ```
-__2. Simulate RIRs and convolve the signals:__
 
+__2. Simulate RIRs and convolve the signals__
 The argument `--rir_nb` makes it possible to parallelize the process.
+
+Example:
 ```
 python dataset_generation/generation/generate_disco.py --dset train \
                                                        --scenario meeting \
