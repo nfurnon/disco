@@ -27,17 +27,23 @@ structure:
             │
             └──chapterC
 ```
-### │To generate the Disco dataset:
-1. Download freesound files:
+### To generate the Disco dataset:
+__1. Download freesound files:__
 ```
 python dataset_generation/pre_generation/download_freesound_queries.py \
-        --download_type parallel --query_by id --file_of_ids dataset_generation/pre_generation/ids_per_category.csv \
-        --save_dir trial --min_duration 5.5
+        --download_type parallel \
+        --query_by id \
+        --file_of_ids dataset_generation/pre_generation/ids_per_category.csv \
+        --save_dir trial \
+        --min_duration 5.5
 ```
-2. Simulate RIRs and convolve the signals:
+__2. Simulate RIRs and convolve the signals:__
 
 The argument `--rir_nb` makes it possible to parallelize the process.
 ```
-python dataset_generation/generation/generate_disco.py --dset train --scenario meeting --rir_id 3 --rir_nb 1 \
+python dataset_generation/generation/generate_disco.py --dset train \
+                                                       --scenario meeting \
+                                                       --rir_id 3 \
+                                                       --rir_nb 1 \
                                                        --dir_out tmp
 ```
