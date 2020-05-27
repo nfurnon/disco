@@ -6,6 +6,7 @@ This repository gathers scripts to:
 You will need the [LibriSpeech](http://www.openslr.org/12/) corpus, accessible from working directory and following the
 structure:
 
+```
  ──path_to_librispeech/
     ├──test-clean
     │   └──speaker_te1
@@ -25,7 +26,7 @@ structure:
             │   └──sentenceS
             │
             └──chapterC
-
+```
 ### │To generate the Disco dataset:
 1. Download freesound files:
 ```
