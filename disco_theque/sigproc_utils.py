@@ -1,9 +1,10 @@
 import re
 import os
-import numpy as np
 import scipy
+import numpy as np
+import soundfile as sf
 from acoustics.signal import OctaveBand
-from disco_theque.math_utils import next_pow_2
+from disco_theque.math_utils import next_pow_2, lin2db, db2lin
 
 
 #%% VAD
