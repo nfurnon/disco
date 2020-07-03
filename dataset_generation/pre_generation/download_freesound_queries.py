@@ -143,8 +143,8 @@ def download_from_file_list(files_list, result_dir, dwnl_type, n_jobs=5, chunk_s
       files_list (list): List of freesound sounds to download
       result_dir (str): Directory where sound files will be stored
       dwnl_type (str): Download type. To choose from ``serial`` and ``parallel``
-      n_jobs:  Number of parallel download (Default value = 5)
-      chunk_size:  (Default value = 6)
+      n_jobs:  Number of parallel download (Default: 5)
+      chunk_size:  (Default: 6)
     """
     category = os.path.split(result_dir)[-1]
     if dwnl_type == 'serial':
