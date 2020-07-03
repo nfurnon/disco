@@ -63,11 +63,17 @@ def download_fs_file(result_dir, sound, cnt=1):
 
 
 def parallel_download(out_dir, fs_sound, n_jobs=6, chunk_size=5):
-    """
-    Parallelize downloading of freesound files.
-    :param out_dir:         (str) Output directory where data is saved
-    :param fs_sound         (dict) Freesound object
-    :return                 Information of the files downloaded
+    """Parallelizes downloading of freesound files.
+
+    Args:
+      out_dir (str): Output directory where data is saved
+      fs_sound (dict): Freesound object
+      n_jobs (int):  Number of parallel download streams (Default: 6)
+      chunk_size (int): (Default: 5)
+
+    Returns:
+        list: Information about the downloaded files
+
     """
     infos = []
     with closing(Pool(n_jobs)) as p:
