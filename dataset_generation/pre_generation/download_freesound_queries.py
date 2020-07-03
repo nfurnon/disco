@@ -150,7 +150,20 @@ def download_from_file_list(files_list, result_dir, dwnl_type, n_jobs=5, chunk_s
 
 def download_by_query(fs_client, out_dir, dwnl_type, fields_to_save,
                       min_duration=5.5, n_jobs=5, chunk_size=6):
-    """Download the files by sending specific queries to freesound."""
+    """Downloads the files by sending specific queries to freesound.
+
+    Args:
+      fs_client (freesound.FreesoundClient): Freesound client
+      out_dir (str): Output directory
+      dwnl_type (str): Download type. To choose from ``serial`` and ``parallel``
+      fields_to_save (list): Fields to save 
+      min_duration (float): Minimum file duration in seconds (Default: 5.5)
+      n_jobs: Number of parallel download (Default: 5)
+      chunk_size (int):  (Default: 6)
+
+    Returns:
+
+    """
     for query, dir_name in zip(queries, dir_names):
         files_list, cl = get_queries(fs_client,
                                      query=query,
