@@ -1,3 +1,5 @@
+"""Module to download data from freesound."""
+
 from tqdm import tqdm
 import argparse
 from contextlib import closing
