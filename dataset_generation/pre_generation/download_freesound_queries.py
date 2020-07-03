@@ -86,8 +86,17 @@ def parallel_download(out_dir, fs_sound, n_jobs=6, chunk_size=5):
 
 
 def parallel_infos(out_dir, fs_sound, infos, n_jobs=6, chunk_size=5):
-    """
-    Parallelize downloading of freesound files
+    """Parallelize downloading of freesound files
+
+    Args:
+      out_dir: 
+      fs_sound: 
+      infos: 
+      n_jobs:  (Default value = 6)
+      chunk_size:  (Default value = 5)
+
+    Returns:
+
     """
     with closing(Pool(n_jobs)) as p:
         download_file_alias = functools.partial(download_fs_file, out_dir)
@@ -161,8 +170,6 @@ def download_by_query(fs_client, out_dir, dwnl_type, fields_to_save,
       n_jobs: Number of parallel download (Default: 5)
       chunk_size (int):  (Default: 6)
 
-    Returns:
-
     """
     for query, dir_name in zip(queries, dir_names):
         files_list, cl = get_queries(fs_client,
@@ -177,7 +184,19 @@ def download_by_query(fs_client, out_dir, dwnl_type, fields_to_save,
 
 def download_by_id(fs_client, ids_file, out_dir, dwnl_type, fields_to_save,
                    min_duration=5.5, n_jobs=5, chunk_size=6):
-    """Download the files by sending an ID query to freesound."""
+    """Downloads the files by sending an ID query to freesound.
+
+    Args:
+      fs_client (freesound.FreesoundClient): Freesound client
+      ids_file (str): Files of ids
+      out_dir (str): Output directory
+      dwnl_type (str): Download type. To choose from ``serial`` and ``parallel``
+      fields_to_save (list): Fields to save
+      min_duration (float): Minimum file duration in seconds (Default: 5.5)
+      n_jobs: Number of parallel downloads (Default: 5)
+      chunk_size: (Default: 6)
+
+    """
     ids_per_cat, cats = get_str_ids(ids_file)
     for ids_str, dir_name in zip(ids_per_cat, cats):
         for i in range(int(np.ceil(len(ids_str) / 200))):
