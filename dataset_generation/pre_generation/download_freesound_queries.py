@@ -124,7 +124,19 @@ def get_str_ids(file):
 
 
 def download_from_file_list(files_list, result_dir, dwnl_type, n_jobs=5, chunk_size=6):
-    """Download from a file list obtained from freesound request."""
+    """Download from a file list obtained from freesound request.
+
+    Information about downloaded files are stored in a file named
+    `freesound_domestic_noises_{category}.csv`. `category` is the basename of
+    `result_dir`.
+
+    Args:
+      files_list (list): List of freesound sounds to download
+      result_dir (str): Directory where sound files will be stored
+      dwnl_type (str): Download type. To choose from ``serial`` and ``parallel``
+      n_jobs:  Number of parallel download (Default value = 5)
+      chunk_size:  (Default value = 6)
+    """
     category = os.path.split(result_dir)[-1]
     if dwnl_type == 'serial':
         infos = serial_download(files_list, result_dir)
