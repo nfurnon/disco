@@ -18,12 +18,14 @@ dir_names = ["washing_machine", "vacuum_cleaner", "blender", "fan", "fan", "dish
 
 
 def get_queries(client, **params):
-    """ Get text results of a query
+    """Gets text results of a query.
+
     Args:
-        **params: args given to freesound.FreesoundClient().text_search() (query, filter, ...)
+      client (freesound.FreesoundClient): Freesound client
+      **params (dict): args given to freesound.FreesoundClient().text_search() (query, filter, ...)
 
     Returns:
-        A list of results and a count
+      list, int: A list of results, count
 
     """
     list_results = []
