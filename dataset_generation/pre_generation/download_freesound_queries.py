@@ -23,6 +23,34 @@ dir_names = ["washing_machine", "vacuum_cleaner", "blender", "fan", "fan", "dish
              "rain", "printer", "water"]
 
 
+def limit_exec(function, max_per_minute=50):
+    """Limits number of executions of `function` per minute.
+
+    When `function` has executed `max_per_minute` times within a minute, it goes to sleep until the remaining time to a
+    minute as ellapsed.
+
+    Args:
+        function (callable): Function
+        max_per_minute (int, optional): Maximum number of execution per minute (Default: 50)
+    """
+    @functools.wraps(function)
+    def time_limited_function(*args, **kwargs):
+        if time_limited_function.num_exec == 0:
+            time_limited_function.start = time.time()
+        res = function(*args, **kwargs)
+        time_limited_function.num_exec += 1
+
+        if time_limited_function.num_exec == max_per_minute:
+            end = time.time()
+            ellapsed = end - time_limited_function.start
+            time_to_sleep = 60 - ellapsed
+            if time_to_sleep > 0:
+                time.sleep(time_to_sleep)
+            time_limited_function.num_exec = 0
+        return res
+
+    time_limited_function.num_exec = 0
+    return time_limited_function
 def get_queries(client, **params):
     """Gets text results of a query.
 
