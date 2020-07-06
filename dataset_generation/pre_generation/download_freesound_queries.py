@@ -21,6 +21,40 @@ queries = ["washing machine-beat", "vacuum cleaner-off -on", "mixer,blender kitc
            "rain window", "printer -laser-warming-startup", "water sink"]
 dir_names = ["washing_machine", "vacuum_cleaner", "blender", "fan", "fan", "dishwasher", "baby", "fireplace",
              "rain", "printer", "water"]
+def parse_args(arguments):
+    """Parses program arguments.
+
+    Args:
+        arguments (list[str]): Arguments to parse. Pass ``None`` to parse command line arguments.
+
+    Returns:
+        argparse.ArgumentParser: Parsed arguments
+
+    """
+    parser = argparse.ArgumentParser(description=__doc__,
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--num_jobs', '-nj',
+                        help='Number of parallel download. Pass 0 or 1 for serial downloads',
+                        type=int,
+                        default=0)
+    parser.add_argument('--save_dir', '-sd',
+                        help='Directory to save in',
+                        type=str,
+                        default='tmp')
+    parser.add_argument('--min_duration', '-md',
+                        help='Minimal duration of the files to download',
+                        type=float,
+                        default=5.5)
+    parser.add_argument('token', action='store',
+                        help='Freesound token',
+                        type=str)
+    parser.add_argument('config', action='store',
+                        help='Configuration file in yaml format',
+                        type=str)
+    args = parser.parse_args(args=arguments)
+    return args
+
+
 class Config(namedtuple("Config", "queries, id_files, fields_to_save")):
     """Freesound download configuration.
 
