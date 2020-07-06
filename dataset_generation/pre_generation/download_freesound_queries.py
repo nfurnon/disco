@@ -37,6 +37,8 @@ import numpy as np
 import pandas as pd
 import yaml
 
+import istarmap
+
 def main(arguments=None):
     """Command line program.
 
@@ -239,7 +241,7 @@ def parallel_exec(func, iterable, num_proc):
         list: Outputs of func for each element in `iterable`
     """
     with Pool(processes=num_proc) as proc:
-        return list(tqdm(proc.imap_unordered(func, iterable), total=len(iterable)))
+        return list(tqdm(proc.istarmap(func, iterable), total=len(iterable)))
 
 
 def serial_exec(func, iterable):
