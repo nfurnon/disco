@@ -306,7 +306,7 @@ def limited_download(file, filename, output_dir):
         output_dir (str): Output directory where file will be stored
     """
     logger = logging.getLogger(__name__)
-    logger.info(f'\t\tDownloading: {filename}')
+    logger.info(f'\t\tDownloading: {file.name}')
     try:
         file.retrieve(output_dir, name=filename)
     except freesound.FreesoundException:
