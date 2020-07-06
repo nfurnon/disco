@@ -60,19 +60,21 @@ def main(arguments=None):
         get_files = inquirer.id_file_to_files
     else:
         requested_data = config.queries
-        get_files = inquirer.query_to_files
+        get_files = inquirer.queries_to_files
 
     for dir_name, requests in requested_data.items():
         logger.info(f'Downloading category {dir_name}')
         output_dir = os.path.join(args.save_dir, dir_name)
         os.makedirs(output_dir, exist_ok=True)
-        for request in requests:
-            files = get_files(request, config.fields_to_save, min_duration=args.min_duration)
-            csv_path = os.path.join(output_dir, f'freesound_domestic_noises_{dir_name}.csv')
-            write_info(files, csv_path, sep='\t', header=True, index=False)
+        list_files = []
+        downloader = functools.partial(limited_download, output_dir=output_dir)
+        for files in get_files(requests, config.fields_to_save, min_duration=args.min_duration):
+            list_files += files
             files = list(filter(lambda x: not(osp.exists(osp.join(output_dir, f'{x.id}.{x.type}'))), files))
             filenames = [f'{file.id}.{file.type}' for file in files]
-            func_exec(functools.partial(limited_download, output_dir=output_dir), list(zip(files, filenames)))
+            func_exec(downloader, list(zip(files, filenames)))
+        csv_path = os.path.join(output_dir, f'freesound_domestic_noises_{dir_name}.csv')
+        write_info(list_files, csv_path, sep='\t', header=True, index=False)
 
 
 def parse_args(arguments):
@@ -167,31 +169,31 @@ class FreesoundInquirer(freesound.FreesoundClient):
         super().__init__()
         self.set_token(token, auth_type=authentication_method)
 
-    def query_to_files(self, query, fields_to_save, min_duration=5.5):
-        """Gets Freesound objects corresponding to `query`.
+    def queries_to_files(self, queries, fields_to_save, min_duration=5.5):
+        """Gets Freesound objects corresponding to `queries`.
 
         Args:
-            query (str): Query
+            queries (str): Queries
             fields_to_save (list[str]): List of fields to save
             min_duration (float, optional): Minimum file duration in s (Default: 5.5)
 
-        Returns:
+        Yields:
             list: List of relevant files
         """
-        list_results = []
-        page = 1
-        while True:
-            results = self.text_search(query=query,
-                                       filter='duration:[{} TO *]'.format(min_duration),
-                                       sort="score",
-                                       fields=",".join(fields_to_save),
-                                       page_size=150,  # 150 is the maximum
-                                       page=page)
-            list_results += list(results)
-            dict_results = results.as_dict()
-            if dict_results["next"] is None:
-                break
-            page += 1
+        for query in queries:
+            page = 1
+            while True:
+                results = self.text_search(query=query,
+                                           filter='duration:[{} TO *]'.format(min_duration),
+                                           sort="score",
+                                           fields=",".join(fields_to_save),
+                                           page_size=150,  # 150 is the maximum
+                                           page=page)
+                dict_results = results.as_dict()
+                if dict_results["next"] is None:
+                    break
+                page += 1
+                yield results
 
         return list_results
 
