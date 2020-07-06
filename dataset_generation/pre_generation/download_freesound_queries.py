@@ -65,17 +65,17 @@ def parse_args(arguments):
 
     """
     parser = argparse.ArgumentParser(description=__doc__,
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('--num_jobs', '-nj',
-                        help='Number of parallel download. Pass 0 or 1 for serial downloads',
+                        help='Number of parallel download. Pass 0 or 1 for serial downloads (Default: 0)',
                         type=int,
                         default=0)
     parser.add_argument('--save_dir', '-sd',
-                        help='Directory to save in',
+                        help='Directory to save in (Default: \'tmp\')',
                         type=str,
                         default='tmp')
     parser.add_argument('--min_duration', '-md',
-                        help='Minimal duration of the files to download',
+                        help='Minimal duration of the files to download (Default: 5.5)',
                         type=float,
                         default=5.5)
     parser.add_argument('token', action='store',
