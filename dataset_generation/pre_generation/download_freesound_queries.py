@@ -1,5 +1,9 @@
-"""Module to download data from freesound."""
+"""Module to download data from freesound.
 
+To get an access token, please follow the instructions at
+https://freesound.org/docs/api/authentication.html#oauth2-authentication
+
+"""
 from tqdm import tqdm
 import argparse
 from contextlib import closing
