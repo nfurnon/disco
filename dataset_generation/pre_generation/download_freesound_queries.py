@@ -23,6 +23,31 @@ dir_names = ["washing_machine", "vacuum_cleaner", "blender", "fan", "fan", "dish
              "rain", "printer", "water"]
 
 
+def parallel_exec(func, iterable, num_proc):
+    """Executes `func` over `num_proc` processes.
+
+    Args:
+        func (callable): Pickable function
+        iterable (iterable): Values given to `func`
+        num_proc (int): Number of processes
+
+    Returns:
+        list: Outputs of func for each element in `iterable`
+    """
+    with Pool(processes=num_proc) as proc:
+        return list(tqdm(proc.imap_unordered(func, iterable), total=len(iterable)))
+
+
+def serial_exec(func, iterable):
+    """Executes `func` over iterable.
+
+    Args:
+        func (callable): Function
+        iterable (iterable): Values given to `func`
+    """
+    return [func(val) for val in tqdm(iterable)]
+
+
 def limit_exec(function, max_per_minute=50):
     """Limits number of executions of `function` per minute.
 
