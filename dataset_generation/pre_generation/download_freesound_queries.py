@@ -68,6 +68,10 @@ class FreesoundInquirer(freesound.FreesoundClient):
         return list_results
 
 
+    def id_file_to_files(self, id_file, fields_to_save, min_duration=5.5):
+        raise RuntimeError('Not implemented yet')
+
+
 def set_up_log(logfile='', level=0):
     """Sets up master logger.
 
