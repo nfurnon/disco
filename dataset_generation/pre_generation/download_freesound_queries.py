@@ -56,8 +56,8 @@ def main(arguments=None):
         func_exec = serial_exec
 
     if config.id_files:
-        requested_data = config.id_files
-        get_files = inquirer.id_file_to_files
+        requested_data = extract_category_ids(config.id_files)
+        get_files = inquirer.ids_to_files
     else:
         requested_data = config.queries
         get_files = inquirer.queries_to_files
@@ -131,12 +131,9 @@ class Config(namedtuple("Config", "queries, id_files, fields_to_save")):
         return self
 
     def _format_inputs(self):
-        for member in [self.queries, self.id_files]:
-            if not member:
-                continue
-            for key, value in member.items():
-                if isinstance(value, str):
-                    member[key] = [value]
+        for key, value in self.queries.items():
+            if isinstance(value, str):
+                self.queries[key] = [value]
 
     @classmethod
     def from_yaml(cls, config_file):
@@ -195,11 +192,38 @@ class FreesoundInquirer(freesound.FreesoundClient):
                 page += 1
                 yield results
 
-        return list_results
+    def ids_to_files(self, ids, fields_to_save, min_duration=5.5):
+        """Gets files from list of IDs.
+
+        Args:
+            ids (list[str]): List of IDs.
+            fields_to_save (list[str]): Fields to save
+            min_duration (float, optional): Minimum file duration in s (Default: 5.5)
+        """
+        # packs of 200 necessary to work with Freesound API
+        for i in range(int(np.ceil(len(ids) / 200))):
+            ids_str_ = ids[i * 200:(i + 1) * 200]
+            results = self.text_search(query='',
+                                       filter=f'duration:[{min_duration} TO *] id:(' \
+                                              f'{" OR ".join(ids_str_)})',
+                                       sort='score',
+                                       fields=','.join(fields_to_save))
+            yield results
 
 
-    def id_file_to_files(self, id_file, fields_to_save, min_duration=5.5):
-        raise RuntimeError('Not implemented yet')
+def extract_category_ids(id_file):
+    """Extracts ids per category given in `id_file`.
+
+    Args:
+        file (str): CSV file of labelled audio files
+
+    Returns:
+        dict[str, list[str]]: Category -> list of ids
+    """
+    df = pd.read_csv(id_file, dtype='str')
+    df = df.iloc[:, 1:]  # skip index column
+    df.dropna(inplace=True)
+    return df.to_dict(orient='list')
 
 
 def set_up_log(logfile='', level=0):
