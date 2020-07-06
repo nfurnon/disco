@@ -21,6 +21,46 @@ queries = ["washing machine-beat", "vacuum cleaner-off -on", "mixer,blender kitc
            "rain window", "printer -laser-warming-startup", "water sink"]
 dir_names = ["washing_machine", "vacuum_cleaner", "blender", "fan", "fan", "dishwasher", "baby", "fireplace",
              "rain", "printer", "water"]
+class Config(namedtuple("Config", "queries, id_files, fields_to_save")):
+    """Freesound download configuration.
+
+    Attributes:
+        queries (dict[str, list[str]]): Dirname/queries pairs
+        id_file (dict[str, list[str]]): Dirname/id_file pairs
+        fields_to_save (list[str]): List of fields to save
+
+    Args:
+        queries (dict[str, Union[str, list[str]]]): Dirname/queries pairs
+        id_file (dict[str, Union[str, list[str]]]): Dirname/id_file pairs
+        fields_to_save (list[str]): List of fields to save
+    """
+
+    def __new__(cls, queries=None, id_files=None, fields_to_save=()):
+        self = super().__new__(cls, queries, id_files, fields_to_save)
+        self._format_inputs()
+        return self
+
+    def _format_inputs(self):
+        for member in [self.queries, self.id_files]:
+            if not member:
+                continue
+            for key, value in member.items():
+                if isinstance(value, str):
+                    member[key] = [value]
+
+    @classmethod
+    def from_yaml(cls, config_file):
+        """Instantiates from yaml file.
+
+        Args:
+            config_file (str): Yaml formatted configuration file
+
+        Returns:
+            Config: Freesound config
+        """
+        with open(config_file) as config:
+            content = yaml.safe_load(config)
+            return cls(**content)
 
 
 class FreesoundInquirer(freesound.FreesoundClient):
