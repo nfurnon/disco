@@ -26,6 +26,7 @@ import functools
 import logging
 from multiprocessing import Pool
 import os
+import os.path as osp
 import sys
 import time
 
@@ -66,7 +67,9 @@ def main(arguments=None):
             files = get_files(request, config.fields_to_save, min_duration=args.min_duration)
             csv_path = os.path.join(output_dir, f'freesound_domestic_noises_{dir_name}.csv')
             write_info(files, csv_path, sep='\t', header=True, index=False)
-            func_exec(functools.partial(limited_download, output_dir=output_dir), files)
+            files = list(filter(lambda x: not(osp.exists(osp.join(output_dir, f'{x.id}.{x.type}'))), files))
+            filenames = [f'{file.id}.{file.type}' for file in files]
+            func_exec(functools.partial(limited_download, output_dir=output_dir), list(zip(files, filenames)))
 
 
 def parse_args(arguments):
@@ -244,9 +247,9 @@ def serial_exec(func, iterable):
 
     Args:
         func (callable): Function
-        iterable (iterable): Values given to `func`
+        iterable (iterable): Nested array of arguments given to `func`
     """
-    return [func(val) for val in tqdm(iterable)]
+    return [func(*val) for val in tqdm(iterable)]
 
 
 def write_info(files, file_path, **kwargs):
@@ -294,14 +297,20 @@ def limit_exec(function, max_per_minute=50):
 
 
 @limit_exec
-def limited_download(file, output_dir):
+def limited_download(file, filename, output_dir):
     """Downloads file with a limited number of execution per minute.
 
     Args:
-        file:
-        output_dir:
+        file: Freesound file object
+        filename (str): Name of file on disk
+        output_dir (str): Output directory where file will be stored
     """
-    return download(file, output_dir)
+    logger = logging.getLogger(__name__)
+    logger.info(f'\t\tDownloading: {filename}')
+    try:
+        file.retrieve(output_dir, name=filename)
+    except freesound.FreesoundException:
+        logger.warning(f'Error while downloading {filename}')
 
 
 def download(file, output_dir):
