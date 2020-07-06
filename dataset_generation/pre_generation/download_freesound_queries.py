@@ -23,6 +23,51 @@ dir_names = ["washing_machine", "vacuum_cleaner", "blender", "fan", "fan", "dish
              "rain", "printer", "water"]
 
 
+class FreesoundInquirer(freesound.FreesoundClient):
+    """Inquirer to Freesound API.
+
+    Adds functionalities to :class:`freesound.FreesoundClient` for easier use
+
+    """
+    def __init__(self, token, authentication_method='oauth'):
+        """Instantiates class.
+
+        Args:
+            token (str): Freesound access token
+            authentication_method (str): Authentication method to choose from {'oauth', 'token'} (Default: 'oauth')
+        """
+        super().__init__()
+        self.set_token(token, auth_type=authentication_method)
+
+    def query_to_files(self, query, fields_to_save, min_duration=5.5):
+        """Gets Freesound objects corresponding to `query`.
+
+        Args:
+            query (str): Query
+            fields_to_save (list[str]): List of fields to save
+            min_duration (float, optional): Minimum file duration in s (Default: 5.5)
+
+        Returns:
+            list: List of relevant files
+        """
+        list_results = []
+        page = 1
+        while True:
+            results = self.text_search(query=query,
+                                       filter='duration:[{} TO *]'.format(min_duration),
+                                       sort="score",
+                                       fields=",".join(fields_to_save),
+                                       page_size=150,  # 150 is the maximum
+                                       page=page)
+            list_results += list(results)
+            dict_results = results.as_dict()
+            if dict_results["next"] is None:
+                break
+            page += 1
+
+        return list_results
+
+
 def set_up_log(logfile='', level=0):
     """Sets up master logger.
 
