@@ -23,6 +23,36 @@ dir_names = ["washing_machine", "vacuum_cleaner", "blender", "fan", "fan", "dish
              "rain", "printer", "water"]
 
 
+def set_up_log(logfile='', level=0):
+    """Sets up master logger.
+
+    Args:
+        logfile (str): Log file. Pass empty string to write to std.err (Default: '')
+        level (int): Verbosity level (Default: 0)
+            * 0: warnings only
+            * 1: info and warnings
+            * otherwise: debug, info and warnings
+    """
+    log_format = '[%(levelname)s] %(asctime)s %(funcName)s: %(message)s'
+    time_format = '%Y-%m-%d %H:%M:%S'
+    formatter = logging.Formatter(log_format, time_format)
+    if logfile:
+        os.makedirs(os.path.dirname(logfile), exist_ok=True)
+        handler = logging.FileHandler(logfile)
+    else:
+        handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(formatter)
+    logger = logging.getLogger()
+    logger.handlers = [handler]
+    if level == 0:
+        logger.setLevel(logging.WARNING)
+    elif level == 1:
+        logger.setLevel(logging.INFO)
+    else:
+        logger.setLevel(logging.DEBUG)
+    return logger
+
+
 def parallel_exec(func, iterable, num_proc):
     """Executes `func` over `num_proc` processes.
 
