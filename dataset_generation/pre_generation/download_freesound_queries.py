@@ -200,7 +200,7 @@ class FreesoundInquirer(freesound.FreesoundClient):
             fields_to_save (list[str]): Fields to save
             min_duration (float, optional): Minimum file duration in s (Default: 5.5)
         """
-        # packs of 200 necessary to work with Freesound API
+        # packs of 200 necessary to work with Freesound API (likely due to URL length limit)
         for i in range(int(np.ceil(len(ids) / 200))):
             ids_str_ = ids[i * 200:(i + 1) * 200]
             results = self.text_search(query='',
