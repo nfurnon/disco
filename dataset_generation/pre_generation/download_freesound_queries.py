@@ -4,17 +4,22 @@ To get an access token, please follow the instructions at
 https://freesound.org/docs/api/authentication.html#oauth2-authentication
 
 """
-from tqdm import tqdm
-import argparse
-from contextlib import closing
-from multiprocessing import Pool
-import functools
-import numpy as np
-import os
-import time
-import pandas as pd
-import freesound
 
+import argparse
+from collections import namedtuple
+import functools
+import logging
+from multiprocessing import Pool
+import os
+import sys
+import time
+
+from contextlib import closing
+from tqdm import tqdm
+import freesound
+import numpy as np
+import pandas as pd
+import yaml
 
 def main(arguments=None):
     """Command line program.
