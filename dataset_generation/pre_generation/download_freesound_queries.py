@@ -78,6 +78,20 @@ def serial_exec(func, iterable):
     return [func(val) for val in tqdm(iterable)]
 
 
+def write_info(files, file_path, **kwargs):
+    """Dumps Freesound data info into `file_path`.
+
+    Args:
+        files (list): Freesound files retrieved via the Freesound API
+        file_path (str): File where file info is dumped
+        kwargs (dict): Optional arguments given to pandas `to_csv` method
+    """
+    sound_info = [file.json_dict for file in files]
+    if sound_info:
+        df = pd.DataFrame(sound_info)
+        df.to_csv(file_path, **kwargs)
+
+
 def limit_exec(function, max_per_minute=50):
     """Limits number of executions of `function` per minute.
 
