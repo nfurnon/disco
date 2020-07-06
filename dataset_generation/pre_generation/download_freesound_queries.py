@@ -48,7 +48,7 @@ def main(arguments=None):
     args = parse_args(arguments)
     config = Config.from_yaml(args.config)
     inquirer = FreesoundInquirer(args.token)
-    set_up_log(level=1)
+    logger = set_up_log(level=1)
 
     if args.num_jobs > 1:
         func_exec = functools.partial(parallel_exec, num_proc=args.num_jobs)
@@ -63,6 +63,7 @@ def main(arguments=None):
         get_files = inquirer.query_to_files
 
     for dir_name, requests in requested_data.items():
+        logger.info(f'Downloading category {dir_name}')
         output_dir = os.path.join(args.save_dir, dir_name)
         os.makedirs(output_dir, exist_ok=True)
         for request in requests:
