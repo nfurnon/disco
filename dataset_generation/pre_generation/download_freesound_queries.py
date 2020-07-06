@@ -51,6 +51,32 @@ def limit_exec(function, max_per_minute=50):
 
     time_limited_function.num_exec = 0
     return time_limited_function
+
+
+@limit_exec
+def limited_download(file, output_dir):
+    """Downloads file with a limited number of execution per minute.
+
+    Args:
+        file:
+        output_dir:
+    """
+    return download(file, output_dir)
+
+
+def download(file, output_dir):
+    logger = logging.getLogger(__name__)
+    filename = "{}.{}".format(file.id, file.type)
+    if not os.path.exists(os.path.join(output_dir, filename)):
+        try:
+            logger.info(f'\t\tDownloading: {file.name}')
+            file.retrieve(output_dir, name=filename)
+        except freesound.FreesoundException:
+            logger.warning(f'Error while downloading {filename}')
+    else:
+        logger.info(f'\t {file.name} already downloaded')
+
+
 def get_queries(client, **params):
     """Gets text results of a query.
 
