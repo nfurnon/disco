@@ -3,6 +3,21 @@
 To get an access token, please follow the instructions at
 https://freesound.org/docs/api/authentication.html#oauth2-authentication
 
+Configuration file format:
+```yaml
+# id_files will be used instead of queries if not empty
+id_files:  # may be left empty
+    dir_name1: id_file1_path
+    dir_name2: id_file2_path
+    dir_name3: [id_file3_path, id_file4_path]
+
+queries:
+    dir_name1: query1
+    dir_name2: [query2, query3]
+
+fields_to_save: ['id']
+```
+
 """
 
 import argparse
