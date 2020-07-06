@@ -15,12 +15,40 @@ import time
 import pandas as pd
 import freesound
 
-# Global variables -- Categories of sounds to download for --query_by='query' and their respective folders
-queries = ["washing machine-beat", "vacuum cleaner-off -on", "mixer,blender kitchen",
-           "fan vent", "air conditioner", "dishwasher -door", "baby cry", "fireplace,chimney - wind",
-           "rain window", "printer -laser-warming-startup", "water sink"]
-dir_names = ["washing_machine", "vacuum_cleaner", "blender", "fan", "fan", "dishwasher", "baby", "fireplace",
-             "rain", "printer", "water"]
+
+def main(arguments=None):
+    """Command line program.
+
+    Args:
+        arguments (list[str]): Program arguments. Pass ``None`` to parse command line (Default: ``None``)
+    """
+    args = parse_args(arguments)
+    config = Config.from_yaml(args.config)
+    inquirer = FreesoundInquirer(args.token)
+    set_up_log(level=1)
+
+    if args.num_jobs > 1:
+        func_exec = functools.partial(parallel_exec, num_proc=args.num_jobs)
+    else:
+        func_exec = serial_exec
+
+    if config.id_files:
+        requested_data = config.id_files
+        get_files = inquirer.id_file_to_files
+    else:
+        requested_data = config.queries
+        get_files = inquirer.query_to_files
+
+    for dir_name, requests in requested_data.items():
+        output_dir = os.path.join(args.save_dir, dir_name)
+        os.makedirs(output_dir, exist_ok=True)
+        for request in requests:
+            files = get_files(request, config.fields_to_save, min_duration=args.min_duration)
+            csv_path = os.path.join(output_dir, f'freesound_domestic_noises_{dir_name}.csv')
+            write_info(files, csv_path, sep='\t', header=True, index=False)
+            func_exec(functools.partial(limited_download, output_dir=output_dir), files)
+
+
 def parse_args(arguments):
     """Parses program arguments.
 
