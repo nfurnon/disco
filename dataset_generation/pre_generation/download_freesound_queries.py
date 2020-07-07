@@ -68,7 +68,7 @@ def main(arguments=None):
         os.makedirs(output_dir, exist_ok=True)
         list_files = []
         downloader = functools.partial(limited_download, output_dir=output_dir)
-        for files in get_files(requests, config.fields_to_save, min_duration=args.min_duration):
+        for files in get_files(requests, config.fields_to_save, min_duration=config.min_duration):
             list_files += files
             files = list(filter(lambda x: not(osp.exists(osp.join(output_dir, f'{x.id}.{x.type}'))), files))
             filenames = [f'{file.id}.{file.type}' for file in files]
@@ -97,10 +97,6 @@ def parse_args(arguments):
                         help='Directory to save in (Default: \'tmp\')',
                         type=str,
                         default='tmp')
-    parser.add_argument('--min_duration', '-md',
-                        help='Minimal duration of the files to download (Default: 5.5)',
-                        type=float,
-                        default=5.5)
     parser.add_argument('token', action='store',
                         help='Freesound token',
                         type=str)
@@ -111,22 +107,24 @@ def parse_args(arguments):
     return args
 
 
-class Config(namedtuple("Config", "queries, id_files, fields_to_save")):
+class Config(namedtuple("Config", "queries, id_files, fields_to_save, min_duration")):
     """Freesound download configuration.
 
     Attributes:
         queries (dict[str, list[str]]): Dirname/queries pairs
         id_file (dict[str, list[str]]): Dirname/id_file pairs
         fields_to_save (list[str]): List of fields to save
+        min_duration (float): Minimum file duration in seconds
 
     Args:
         queries (dict[str, Union[str, list[str]]]): Dirname/queries pairs
         id_file (dict[str, Union[str, list[str]]]): Dirname/id_file pairs
         fields_to_save (list[str]): List of fields to save
+        min_duration (float, optional) Minimum file duration in seconds (Default: 5.5)
     """
 
-    def __new__(cls, queries=None, id_files=None, fields_to_save=()):
-        self = super().__new__(cls, queries, id_files, fields_to_save)
+    def __new__(cls, queries=None, id_files=None, fields_to_save=(), min_duration=5.5):
+        self = super().__new__(cls, queries, id_files, fields_to_save, min_duration)
         self._format_inputs()
         return self
 
