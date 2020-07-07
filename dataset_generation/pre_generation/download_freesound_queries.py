@@ -7,8 +7,8 @@ Configuration file example:
 
 .. code-block:: yaml
 
-    # id_files will be used instead of queries if not empty
-    id_files: dataset_generation/pre_generation/ids_per_category.csv  # may be left empty
+    # id_file will be used instead of queries if not empty
+    id_file: dataset_generation/pre_generation/ids_per_category.csv  # may be left empty
 
     queries:
         baby: "baby cry"
@@ -55,8 +55,8 @@ def main(arguments=None):
         func_exec = serial_exec
 
     inquirer = FreesoundInquirer(args.token)
-    if config.id_files:
-        requested_data = extract_category_ids(config.id_files)
+    if config.id_file:
+        requested_data = extract_category_ids(config.id_file)
         get_files = inquirer.ids_to_files
     else:
         requested_data = config.queries
@@ -107,7 +107,7 @@ def parse_args(arguments):
     return args
 
 
-class Config(namedtuple("Config", "queries, id_files, fields_to_save, min_duration")):
+class Config(namedtuple("Config", "queries, id_file, fields_to_save, min_duration")):
     """Freesound download configuration.
 
     Attributes:
@@ -118,7 +118,7 @@ class Config(namedtuple("Config", "queries, id_files, fields_to_save, min_durati
 
     """
 
-    def __new__(cls, queries=None, id_files=None, fields_to_save=(), min_duration=5.5):
+    def __new__(cls, queries=None, id_file=None, fields_to_save=(), min_duration=5.5):
         """Creates new instance
 
         Args:
@@ -127,9 +127,9 @@ class Config(namedtuple("Config", "queries, id_files, fields_to_save, min_durati
             fields_to_save (list[str]): List of fields to save
             min_duration (float, optional) Minimum file duration in seconds (Default: 5.5)
         """
-        self = super().__new__(cls, queries, id_files, fields_to_save, min_duration)
-        if not bool(queries) and not bool(id_files):
-            raise ValueError('At least one of "queries" and "id_files" must be non-empty')
+        self = super().__new__(cls, queries, id_file, fields_to_save, min_duration)
+        if not bool(queries) and not bool(id_file):
+            raise ValueError('At least one of "queries" and "id_file" must be non-empty')
         self._format_inputs()
         return self
 
