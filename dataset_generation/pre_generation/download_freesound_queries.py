@@ -3,19 +3,18 @@
 To get an access token, please follow the instructions at
 https://freesound.org/docs/api/authentication.html#oauth2-authentication
 
-Configuration file format:
+Configuration file example:
 ```yaml
 # id_files will be used instead of queries if not empty
-id_files:  # may be left empty
-    dir_name1: id_file1_path
-    dir_name2: id_file2_path
-    dir_name3: [id_file3_path, id_file4_path]
+id_files: dataset_generation/pre_generation/ids_per_category.csv  # may be left empty
 
 queries:
-    dir_name1: query1
-    dir_name2: [query2, query3]
+    baby: "baby cry"
+    fan: ["fan vent", "air conditioning"]
 
 fields_to_save: ['id']
+
+min_duration: 3  # If missing in config, a value of 5.5 (s) is assumed
 ```
 
 """
