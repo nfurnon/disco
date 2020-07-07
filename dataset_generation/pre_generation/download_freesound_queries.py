@@ -39,6 +39,7 @@ import yaml
 
 import istarmap
 
+
 def main(arguments=None):
     """Command line program.
 
@@ -47,7 +48,6 @@ def main(arguments=None):
     """
     args = parse_args(arguments)
     config = Config.from_yaml(args.config)
-    inquirer = FreesoundInquirer(args.token)
     logger = set_up_log(level=1)
 
     if args.num_jobs > 1:
@@ -55,6 +55,7 @@ def main(arguments=None):
     else:
         func_exec = serial_exec
 
+    inquirer = FreesoundInquirer(args.token)
     if config.id_files:
         requested_data = extract_category_ids(config.id_files)
         get_files = inquirer.ids_to_files
