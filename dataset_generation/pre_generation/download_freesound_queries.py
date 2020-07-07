@@ -29,7 +29,6 @@ import os.path as osp
 import sys
 import time
 
-from contextlib import closing
 from tqdm import tqdm
 import freesound
 import numpy as np
