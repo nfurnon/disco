@@ -128,6 +128,8 @@ class Config(namedtuple("Config", "queries, id_files, fields_to_save, min_durati
             min_duration (float, optional) Minimum file duration in seconds (Default: 5.5)
         """
         self = super().__new__(cls, queries, id_files, fields_to_save, min_duration)
+        if not bool(queries) and not bool(id_files):
+            raise ValueError('At least one of "queries" and "id_files" must be non-empty')
         self._format_inputs()
         return self
 
