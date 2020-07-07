@@ -2,27 +2,60 @@ import numpy as np
 
 
 def floor_to_multiple(num, div):
-    """ Returns the highest multiple of div that is lower than num.
-    e.g. floor_to_multiple(102, 10) = 100
-         floor_to_multiple(65, 8) = 64
+    """Computes the highest multiple of `div` that is lower than `num`.
+
+    Examples:
+        >>> floor_to_multiple(102, 10)
+        100
+        >>> floor_to_multiple(65, 8)
+        64
+
+    Args:
+        num (int):
+        div (int):
+
+    Returns:
+        int: Highest multiple of `div` that is lower than `num`
+
     """
     return np.int(num - (num % div))
 
 
 def round_to_base(x, base=1):
-    """
-    Round to next integer, with step 'base'.
-    e.g. round_to_base(109.56, 5) = 110
-         round_to_base(109.56, 4) = 108
-         round_to_base(56, 10) = 60
+    """Rounds to next integer, with step `base`.
+
+    Examples:
+        >>> round_to_base(109.56, 5)
+        110
+        >>> round_to_base(108.56, 4)
+        108
+        >>> round_to_base(56, 10)
+        60
+
+    Args:
+        x (float): Number
+        base (int): Base (Default: 1)
+
+    Returns:
+        int: `x` rounded to nearest multiple of `base`
+
     """
     return base * np.round(x / base)
 
 
 def db2lin(x, exp=1):
-    """Decibel to linear converter
-    exp = 1: Decibel to power
-    exp = 2: Decibel to magnitude
+    """Converts decibel to linear scale.
+
+    Note:
+        Set `exp` to 1 to convert to power and to 2 to convert to magnitude
+
+    Args:
+        x (np.ndarray): Quantity expressed in dB.
+        exp (int, optional):  (Default: 1)
+
+    Returns:
+        np.ndarray: Power or magnitude expressed on a linear scale
+
     """
     exp_ = exp*10
     y = 10**(x/exp_)
@@ -30,18 +63,30 @@ def db2lin(x, exp=1):
 
 
 def lin2db(x):
-    """Converter to decibel values
+    """Converts linear to decibel scale.
+
+    Args:
+        x (np.ndarray): Power
+
+    Returns:
+        np.ndarray: Power expressed in dB
+
     """
     return 10*np.log10(x)
 
 
 def cart2pol(x, y):
-    """
-    Returns the coordinate in polar system
-    :param x:
-    :param y:
-    :return: r:         radius
-    :return: theta      in rad, the angle
+    """Converts cartesian to polar coordinates.
+
+    Angles are expressed in radian
+
+    Args:
+        x (np.ndarray): Abscissa
+        y (np.ndarray): Ordinate
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]: radius, angle in radian
+
     """
     r = np.sqrt(x**2 + y**2)
     theta = np.arctan2(y, x)
@@ -53,11 +98,15 @@ def cart2pol(x, y):
 
 
 def pol2cart(r, theta):
-    """
-    Returns the polar coordinate in  cartesian system
-    :param r:           radius
-    :param theta:       in rad, the angle
-    :return: x, y:      cartesian coordinates
+    """Converts polar to cartesian coordinates.
+
+    Args:
+        r (np.ndarray): radii
+        theta (np.ndarray): angles, in radian
+
+    Returns:
+        tuple[np.ndarray, np.ndarray]: Abscissa, ordinate
+
     """
 
     x = r * np.cos(theta)
@@ -67,11 +116,15 @@ def pol2cart(r, theta):
 
 
 def my_mse(x, y):
-    """
-    Compute MSE between two arrays following keras logic but without the weighting (simple mean)
-    :param x:       (array) estimated signal
-    :param y:       (array) reference
-    :return:        mean(abs(x-y)**2))
+    """Computes MSE between two arrays following keras logic but without the weighting (simple mean).
+
+    Args:
+        x (np.ndarray): Estimated signal
+        y (np.ndarray): Reference
+
+    Returns:
+        mean(abs(x-y)**2))
+
     """
     return np.mean(np.mean((x - y)**2, axis=-1))
 
@@ -79,28 +132,36 @@ def my_mse(x, y):
 def next_pow_2(x):
     """Calculates the next power of 2 of a number.
 
-    Parameters
-    ----------
-    x : float
-        Number for which to calculate the next power of 2.
+    Args:
+        x (float): Number for which to calculate the next power of 2
 
-    Returns
-    -------
-    int
-
-    Copyright https://github.com/achabotl/pambox/blob/develop/pambox/utils.py
-
+    Returns:
+        int: Power of 2 closest to and larger than `x`
+    
     """
     return int(pow(2, np.ceil(np.log2(x))))
 
 
 class WelfordsOnlineAlgorithm:
-    """
-    Computes the statistics of a database without loading all the data at one.
+    """Computes the statistics of a database without loading all the data at one.
+
     See https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Welford%27s_online_algorithm. We adapt it
     in the case of 2-D data.
+
+    Attributes:
+        feature_dim (int): Feature dimension
+        mean (np.ndarray): Feature mean
+        m2 (np.ndarray): Second order central moment
+        std (np.ndarray): Feature standard deviation
+        count (int): Number of frames used to compute statistics
+
     """
     def __init__(self, feature_dim):
+        """Initializes class instance.
+
+        Args:
+            feature_dim (int): Feature dimension
+        """
         self.feature_dim = feature_dim
         self.mean = np.zeros(self.feature_dim)
         self.m2 = np.zeros(self.feature_dim)
@@ -108,9 +169,11 @@ class WelfordsOnlineAlgorithm:
         self.count = 0
 
     def update_stats(self, data):
-        """
-        Update mean and std given new samples in data.
-        :param data:        Assumed (feature_dim x n_frames)
+        """Update mean and std given new samples in data.
+
+        Args:
+            data: Assumed (feature_dim x n_frames)
+
         """
         data = np.array(data)
         assert data.shape[0] == self.feature_dim, \
@@ -124,5 +187,4 @@ class WelfordsOnlineAlgorithm:
             delta2 = frame - self.mean
             self.m2 += delta * delta2
             self.std = np.sqrt(self.m2 / self.count)
-
 
