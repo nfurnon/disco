@@ -295,34 +295,39 @@ def write_info(files, file_path, **kwargs):
         df.to_csv(file_path, **kwargs)
 
 
-def limit_exec(function, max_per_minute=50):
+def limit_exec(function=None, *, max_per_minute=50):
     """Limits number of executions of `function` per minute.
 
-    When `function` has executed `max_per_minute` times within a minute, it goes to sleep until the remaining time to a
-    minute as ellapsed.
+    When `function` has executed `max_per_minute` times within a minute, it goes to sleep until the time remaining to a
+    minute has ellapsed.
 
     Args:
         function (callable): Function
         max_per_minute (int, optional): Maximum number of execution per minute (Default: 50)
     """
-    @functools.wraps(function)
-    def time_limited_function(*args, **kwargs):
-        if time_limited_function.num_exec == 0:
-            time_limited_function.start = time.time()
-        res = function(*args, **kwargs)
-        time_limited_function.num_exec += 1
+    def arg_wrapper(func):
+        @functools.wraps(func)
+        def time_limited_function(*args, **kwargs):
+            if time_limited_function.num_exec == 0:
+                time_limited_function.start = time.time()
+            res = func(*args, **kwargs)
+            time_limited_function.num_exec += 1
 
-        if time_limited_function.num_exec == max_per_minute:
-            end = time.time()
-            ellapsed = end - time_limited_function.start
-            time_to_sleep = 60 - ellapsed
-            if time_to_sleep > 0:
-                time.sleep(time_to_sleep)
-            time_limited_function.num_exec = 0
-        return res
+            if time_limited_function.num_exec == max_per_minute:
+                end = time.time()
+                ellapsed = end - time_limited_function.start
+                time_to_sleep = 60 - ellapsed
+                if time_to_sleep > 0:
+                    time.sleep(time_to_sleep)
+                time_limited_function.num_exec = 0
+            return res
 
-    time_limited_function.num_exec = 0
-    return time_limited_function
+        time_limited_function.num_exec = 0
+        return time_limited_function
+
+    if function is None:
+        return arg_wrapper
+    return arg_wrapper(function)
 
 
 @limit_exec
