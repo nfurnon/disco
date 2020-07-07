@@ -4,18 +4,19 @@ To get an access token, please follow the instructions at
 https://freesound.org/docs/api/authentication.html#oauth2-authentication
 
 Configuration file example:
-```yaml
-# id_files will be used instead of queries if not empty
-id_files: dataset_generation/pre_generation/ids_per_category.csv  # may be left empty
 
-queries:
-    baby: "baby cry"
-    fan: ["fan vent", "air conditioning"]
+.. code-block:: yaml
 
-fields_to_save: ['id']
+    # id_files will be used instead of queries if not empty
+    id_files: dataset_generation/pre_generation/ids_per_category.csv  # may be left empty
 
-min_duration: 3  # If missing in config, a value of 5.5 (s) is assumed
-```
+    queries:
+        baby: "baby cry"
+        fan: ["fan vent", "air conditioning"]
+
+    fields_to_save: ['id']
+
+    min_duration: 3  # If missing in config, a value of 5.5 (s) is assumed
 
 """
 
