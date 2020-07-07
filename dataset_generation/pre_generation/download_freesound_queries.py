@@ -43,7 +43,7 @@ def main(arguments=None):
     """Command line program.
 
     Args:
-        arguments (list[str]): Program arguments. Pass ``None`` to parse command line (Default: ``None``)
+        arguments (list[str], optional): Program arguments. Pass ``None`` to parse command line (Default: ``None``)
     """
     args = parse_args(arguments)
     config = Config.from_yaml(args.config)
@@ -122,9 +122,9 @@ class Config(namedtuple("Config", "queries, id_file, fields_to_save, min_duratio
         """Creates new instance
 
         Args:
-            queries (dict[str, Union[str, list[str]]]): Dirname/queries pairs
-            id_file (dict[str, Union[str, list[str]]]): Dirname/id_file pairs
-            fields_to_save (list[str]): List of fields to save
+            queries (dict[str, Union[str, list[str]]], optional): Dirname/queries pairs (Default: ``None``)
+            id_file (dict[str, Union[str, list[str]]], optional): Dirname/id_file pairs (Default: ``None``)
+            fields_to_save (list[str], optional): List of fields to save (Default: ())
             min_duration (float, optional) Minimum file duration in seconds (Default: 5.5)
         """
         self = super().__new__(cls, queries, id_file, fields_to_save, min_duration)
@@ -164,7 +164,8 @@ class FreesoundInquirer(freesound.FreesoundClient):
 
         Args:
             token (str): Freesound access token
-            authentication_method (str): Authentication method to choose from {'oauth', 'token'} (Default: 'oauth')
+            authentication_method (str, optional): Authentication method to choose from {'oauth', 'token'}
+                (Default: 'oauth')
         """
         super().__init__()
         self.set_token(token, auth_type=authentication_method)
@@ -230,14 +231,17 @@ def extract_category_ids(id_file):
 
 
 def set_up_log(logfile='', level=0):
-    """Sets up master logger.
+    """Sets up root logger.
 
     Args:
-        logfile (str): Log file. Pass empty string to write to std.err (Default: '')
-        level (int): Verbosity level (Default: 0)
+        logfile (str, optional): Log file. Pass empty string to write to std.err (Default: '')
+        level (int, optional): Verbosity level (Default: 0)
             * 0: warnings only
             * 1: info and warnings
             * otherwise: debug, info and warnings
+
+    Returns:
+        logging.Logger: Formatted root logger
     """
     log_format = '[%(levelname)s] %(asctime)s %(funcName)s: %(message)s'
     time_format = '%Y-%m-%d %H:%M:%S'
@@ -305,7 +309,7 @@ def limit_exec(function=None, *, max_per_minute=50):
     minute has ellapsed.
 
     Args:
-        function (callable): Function
+        function (callable, optional): Function (Default: ``None``)
         max_per_minute (int, optional): Maximum number of execution per minute (Default: 50)
     """
     def arg_wrapper(func):
