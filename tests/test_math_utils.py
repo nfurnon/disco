@@ -105,3 +105,22 @@ class TestWelfordsOnlineAlgorithm:
         npt.assert_almost_equal(stats.std, np.zeros(feature_dim))
         assert stats.count == 0
 
+    def test_update_stats(self, stats, feature_dim):
+        data = [np.random.randn(feature_dim, 100), np.random.randn(feature_dim, 400)]
+
+        stats.update_stats(data[0])
+        npt.assert_almost_equal(stats.mean, data[0].mean(axis=-1))
+        npt.assert_almost_equal(stats.std, data[0].std(axis=-1))
+        assert stats.count == 100
+
+        stats.update_stats(data[1])
+        whole_data = np.concatenate(data, axis=-1)
+        npt.assert_almost_equal(stats.mean, whole_data.mean(axis=-1))
+        npt.assert_almost_equal(stats.std, whole_data.std(axis=-1))
+        assert stats.count == 500
+
+    def test_update_stats_wrong_dim(self, stats, feature_dim):
+        data = np.zeros((feature_dim + 1, 2))
+        with pytest.raises(AssertionError) as err:
+            stats.update_stats(data)
+        assert f'`data` should have {feature_dim} features, got {feature_dim+1}' in str(err)
