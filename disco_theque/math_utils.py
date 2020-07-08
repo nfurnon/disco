@@ -118,6 +118,8 @@ def pol2cart(r, theta):
 def my_mse(x, y):
     """Computes MSE between two arrays following keras logic but without the weighting (simple mean).
 
+    Written for 2D matrices `x` and `y`
+
     Args:
         x (np.ndarray): Estimated signal
         y (np.ndarray): Reference
