@@ -190,3 +190,22 @@ class WelfordsOnlineAlgorithm:
             self.m2 += delta * delta2
             self.std = np.sqrt(self.m2 / self.count)
 
+    def quick_update(self, data):
+        """Updates stats given new samples.
+
+        This method speeds up computation by vectorizing operations
+
+        Args:
+            data (np.ndarray): Data in (`feature_dim` x `n_frames`)
+
+        """
+        assert data.shape[0] == self.feature_dim, \
+            "`data` should have {} features, got {}".format(self.feature_dim, data.shape[0])
+
+        delta = data - self.mean[:, np.newaxis]
+        self.count += data.shape[-1]
+        self.mean += delta.sum(axis=-1)/self.count
+
+        delta2 = data - self.mean[:, np.newaxis]
+        self.m2 += np.sum(delta2*delta, axis=-1)
+        self.std = np.sqrt(self.m2 / self.count)
