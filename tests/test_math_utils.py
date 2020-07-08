@@ -46,3 +46,16 @@ def test_db2lin(x, exp, expected):
 def test_lin2db(x, expected):
     result = dmath.lin2db(x)
     npt.assert_equal(result, expected)
+
+
+@pytest.mark.parametrize('x, y, expected', (
+    (1, 1, (math.sqrt(2), math.pi/4)),
+    (2, -2, (math.sqrt(8), -math.pi/4)),
+    (-1, 1, (math.sqrt(2), 3*math.pi/4)),
+    (np.array([1, 1, -1, -1]),
+     np.array([1, -1, 1, -1]),
+     (math.sqrt(2)*np.ones(4), math.pi/4*np.array([1, -1, 3, -3]))),
+    ))
+def test_cart2pol(x, y, expected):
+    result = dmath.cart2pol(x, y)
+    npt.assert_almost_equal(result, expected)
