@@ -1,3 +1,7 @@
+import math
+
+import numpy as np
+import numpy.testing as npt
 import pytest
 
 from context import disco_theque
@@ -21,3 +25,14 @@ def test_floor_to_multiple(num, div, expected):
 def test_round_to_base(x, base, expected):
     assert dmath.round_to_base(x, base=base) == expected
 
+
+@pytest.mark.parametrize('x, exp, expected', (
+    (0, 1, 1),
+    (0, 2, 1),
+    (10, 1, 10),
+    (10, 2, math.sqrt(10)),
+    (np.array([-10, -10]), 1, np.array([0.1, 0.1])),
+    ))
+def test_db2lin(x, exp, expected):
+    result = dmath.db2lin(x, exp=exp)
+    npt.assert_equal(result, expected)
