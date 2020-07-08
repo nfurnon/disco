@@ -79,3 +79,11 @@ def test_pol2cart(r, theta, expected):
     ))
 def test_my_mse(x, y, expected):
     assert dmath.my_mse(x, y) == expected
+
+
+@pytest.mark.parametrize('x, expected', (
+    (3, 4),
+    (120, 128),
+    ))
+def test_next_pow_2(x, expected):
+    assert dmath.next_pow_2(x) == expected
