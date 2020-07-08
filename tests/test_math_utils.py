@@ -59,3 +59,15 @@ def test_lin2db(x, expected):
 def test_cart2pol(x, y, expected):
     result = dmath.cart2pol(x, y)
     npt.assert_almost_equal(result, expected)
+
+
+@pytest.mark.parametrize('r, theta, expected', (
+    (math.sqrt(2), math.pi/4, (1, 1)),
+    (math.sqrt(2), 7*math.pi/4, (1, -1)),
+    (math.sqrt(2)*np.ones(4),
+     math.pi/4*np.array([1, -1, 3, -3]),
+     (np.array([1, 1, -1, -1]), np.array([1, -1, 1, -1]))),
+    ))
+def test_pol2cart(r, theta, expected):
+    result = dmath.pol2cart(r, theta)
+    npt.assert_almost_equal(result, expected)
