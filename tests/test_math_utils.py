@@ -36,3 +36,13 @@ def test_round_to_base(x, base, expected):
 def test_db2lin(x, exp, expected):
     result = dmath.db2lin(x, exp=exp)
     npt.assert_equal(result, expected)
+
+
+@pytest.mark.parametrize('x, expected', (
+    (1, 0),
+    (10, 10),
+    (np.array([100, 1000]), np.array([20, 30])),
+    ))
+def test_lin2db(x, expected):
+    result = dmath.lin2db(x)
+    npt.assert_equal(result, expected)
