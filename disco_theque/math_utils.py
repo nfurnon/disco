@@ -139,7 +139,7 @@ def next_pow_2(x):
 
     Returns:
         int: Power of 2 closest to and larger than `x`
-    
+
     """
     return int(pow(2, np.ceil(np.log2(x))))
 
