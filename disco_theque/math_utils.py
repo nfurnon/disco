@@ -37,7 +37,7 @@ def round_to_base(x, base=1):
         base (int): Base (Default: 1)
 
     Returns:
-        int: `x` rounded to nearest multiple of `base`
+        float: `x` rounded to nearest multiple of `base`
 
     """
     return base * np.round(x / base)
