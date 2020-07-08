@@ -71,3 +71,11 @@ def test_cart2pol(x, y, expected):
 def test_pol2cart(r, theta, expected):
     result = dmath.pol2cart(r, theta)
     npt.assert_almost_equal(result, expected)
+
+
+@pytest.mark.parametrize('x, y, expected', (
+    (np.ones((4, 100)), np.ones((4, 100)), 0),
+    (np.ones((4, 100)), np.zeros((4, 100)), 1),
+    ))
+def test_my_mse(x, y, expected):
+    assert dmath.my_mse(x, y) == expected
