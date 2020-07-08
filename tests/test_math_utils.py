@@ -87,3 +87,21 @@ def test_my_mse(x, y, expected):
     ))
 def test_next_pow_2(x, expected):
     assert dmath.next_pow_2(x) == expected
+
+
+class TestWelfordsOnlineAlgorithm:
+    @pytest.fixture(scope='module')
+    def feature_dim(self):
+        return 2
+
+    @pytest.fixture
+    def stats(self, feature_dim):
+        return dmath.WelfordsOnlineAlgorithm(feature_dim)
+
+    def test_init(self, stats, feature_dim):
+        assert stats.feature_dim == feature_dim
+        npt.assert_almost_equal(stats.mean, np.zeros(feature_dim))
+        npt.assert_almost_equal(stats.m2, np.zeros(feature_dim))
+        npt.assert_almost_equal(stats.std, np.zeros(feature_dim))
+        assert stats.count == 0
+
