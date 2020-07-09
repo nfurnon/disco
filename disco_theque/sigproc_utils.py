@@ -220,19 +220,16 @@ def stack_talkers(tlk_list, dur_min, speaker, nb_tlk=5):
 
 
 def noise_from_signal(x):
-    """Create a noise with same spectrum as the input signal.
-
-    Parameters
-    ----------
-    x : array_like
-        Input signal.
-
-    Returns
-    -------
-    ndarray
-        Noise signal.
+    """Creates noise with same spectrum as the input signal.
 
     Copyright https://github.com/achabotl/pambox/blob/develop/pambox/distort.py
+
+    Args:
+      x (array_like): Input signal.
+
+    Returns:
+        np.ndarray: Noise signal
+    
     """
     x = np.asarray(x)
     n_x = x.shape[-1]
