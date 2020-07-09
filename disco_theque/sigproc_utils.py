@@ -9,18 +9,34 @@ from disco_theque.math_utils import next_pow_2, lin2db, db2lin
 
 #%% VAD
 def vad_oracle_batch(x_, win_len=512, win_hop=256, thr=0.001, rat=2):
-    """ Oracle voice activity detector; speech is detected in batch mode, i.e. one binary decision is taken for a batch
-    of N points.
-    Arguments:
-        - s         Signal
-        - thr       Threshold value. Ratio to maximal energy of the signal [0.001]
-        - win_len   Length of the window (in samples). [512]
-        - win_hop   Hop size of windows (in samples) [256]
-        - rat       Ratio of N. If N / rat samples are greater than thr * max(x**2),  the N samples are labelled as
-                    speech. [2]
+    """Estimates voice activity segments based on signal power.
 
-    Output:
-        - vad       VAD (1 if speech, 0 otherwise). Length is len(x).
+    The function determines whether an audio window contains speech by comparing its power to a threshold.
+    More precisely, a window of audio samples is labeled as containing speech if the number of samples with an
+    instantaneous power larger than `thr` is larger than the number of samples in the window divided by `rat`. With
+    `rat` set to 2, it means that more than half the samples in the window have a instantaneous power larger than `thr`.
+
+    The output is a vector of 0s and 1s of the same length as `x_`. A 0 indicates the absence of speech while a 1
+    indicates its presence.
+
+    .. note::
+
+        This method should work reasonably well for clean speech but will
+        perform poorly on noisy data.
+
+    Oracle voice activity detector; speech is detected in batch mode, i.e. one binary decision is taken for a batch
+    of N points.
+
+    Args:
+      x_: Audio waveform
+      win_len: Length of the window (Default: 512)
+      win_hop: Hop size of windows (Default: 256)
+      thr: Threshold value (Default: 0.001)
+      rat: Ratio of N (Default: 2)
+
+    Returns:
+        np.ndarray: Estimated voice activity
+
     """
     x = x_ - np.mean(x_)
     x2 = abs(x ** 2)
