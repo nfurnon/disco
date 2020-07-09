@@ -156,19 +156,22 @@ def fw_snr(s, n, fs, vad_tar=None, vad_noi=None, clipping=1, db=True):
     return fqwt_snr, fw_snr_mean, F
 
 
+# TODO: transform this in functions(s) depending on RIR and SNR and noise signal
 def increase_to_snr(x, n, snr_out, vad_tar=None, vad_noi=None, weight=False, fs=None):
-    """Changing the *noise* level to ensure a SNR of snr_out dB.
-    Arguments:
-        - x         Target signal
-        - n         Noise signal
-        - snr_out   Desired output SNR (in dB)
-        - vad       VAD of noise to compute level on non silent parts. Should be the same length as n.
-        - weight    (bool) If True, weight SNR in freq domain
-        -fs         (float) Sampling frequency. Only required if weight=True
-    Output:
-        - n_ where n_ level is such that var(x) - var(n) = 10**(snr/10)
+    """Scales noise so as to have an SNR of `snr_out` between `x` and `n`.
 
-    TO DO: transform this in function(s) depending on RIR and SNR and noise signal
+    Args:
+        x: Target signal
+        n: Noise signal
+        snr_out: Desired output SNR
+        vad_tar:  (Default: None)
+        vad_noi: VAD of noise to compute level on non silent parts (Default: None)
+        weight (bool): (Default: False)
+        fs (float): (Default: None)
+
+    Returns:
+        np.ndarray: Scaled noise
+
     """
     if weight:
         _, snr_0, _ = fw_snr(x, n, fs, vad_tar=vad_tar, vad_noi=vad_noi)
