@@ -191,11 +191,16 @@ def increase_to_snr(x, n, snr_out, vad_tar=None, vad_noi=None, weight=False, fs=
 
 
 def stack_talkers(tlk_list, dur_min, speaker, nb_tlk=5):
-    """Stacks talkers from tlk_list until dur_min is reached and number of
-    speakers exceeds nb_tlk
-    Arguments:
-        - tlk_list       list of flac/wav files to pick talkers in $
-        - dur_min       Minimal duration *in seconds* of the signal
+    """Stacks talkers from tlk_list until dur_min is reached and number of speakers exceeds nb_tlk.
+
+    Args:
+      tlk_list (list[str]): list of flac/wav files to pick talkers in
+      dur_min: Minimal duration *in seconds* of the signal
+      speaker:
+      nb_tlk (int):  (Default: 5)
+
+    Returns:
+
     """
     i_tlk = 0
     tlk_tot = np.array([])
