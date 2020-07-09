@@ -3,6 +3,8 @@
 To get an access token, please follow the instructions at
 https://freesound.org/docs/api/authentication.html#oauth2-authentication
 
+Queries are found by trial and error on the freesound website.
+
 Configuration file example:
 
 .. code-block:: yaml
