@@ -86,18 +86,23 @@ def third_octave_filterbank(F, fs, order=8):
 
 #%% Metric
 def fw_snr(s, n, fs, vad_tar=None, vad_noi=None, clipping=1, db=True):
-    """ Computes the SNR weighted by the speech intelligibility
-    Arguments:
-        - s             Target speech. First axis should be the time one.
-        - n             Noise speech. First axis should be the time one.
-        - fs            Sampling frequency
-        - clipping      If '1' the not-yet-weighted SNRs are limited to the 
-                        interval [-15, 25] dB. Default 1
-        - db            (bool) Return output in dB ? [True]
-    Output
-        - fw_snr        Frequency weighted SNR
-        - fw_snr_mean   Average fw_SNR
-        - F             Center frequencies
+    """Computes the SNR weighted by the speech intelligibility.
+
+    Args:
+        s: Target speech
+        n: Noise speech
+        fs: Sampling frequency
+        vad_tar:  (Default: None)
+        vad_noi:  (Default: None)
+        clipping: If (Default: 1)
+        db: bool (Default: True)
+
+    Returns:
+        tuple:
+            * fqwt_snr: Frequency weighted SNR
+            * fw_snr_mean: Average fw_SNR
+            * F: Center frequencies
+
     """
     # Band importance function
     r = 2**(1/6)
