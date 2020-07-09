@@ -56,13 +56,22 @@ def vad_oracle_batch(x_, win_len=512, win_hop=256, thr=0.001, rat=2):
 
 #%% Filterbanks
 def third_octave_filterbank(F, fs, order=8):
-    """
-    Returns filter num and denom of third-octave filterbank
-    /!\ Suboptimal function, minimalist
-    Arguments:
-        - F         Center frequencies
-        - fs        Sampling frequency
-        - order     Order of the (butterworth) bandpass filter
+    """Computes coefficients of a third-octave filter bank.
+
+    Row `i` of the returned arrays contain the coefficients for the `i`-th filter
+
+    .. warning::
+    
+        Suboptimal minimalist function
+
+    Args:
+      F (list[int]): Center frequencies
+      fs (int): Sampling frequency
+      order: Order of the Butterworth filters (Default: 8)
+
+    Returns:
+        tuple: numerator coefficients, denominator coefficients
+
     """
     N = len(F)
     b = np.zeros((N, np.int(2 * order + 1)))
