@@ -76,7 +76,7 @@ def main(arguments=None):
             filenames = [f'{file.id}.{file.type}' for file in files]
             func_exec(downloader, list(zip(files, filenames)))
         csv_path = os.path.join(output_dir, f'freesound_domestic_noises_{dir_name}.csv')
-        write_info(list_files, csv_path, sep='\t', header=True, index=False)
+        update_csv(list_files, csv_path, sep='\t', header=True, index=False)
 
 
 def parse_args(arguments):
@@ -290,7 +290,7 @@ def serial_exec(func, iterable):
     return [func(*val) for val in tqdm(iterable)]
 
 
-def write_info(files, file_path, **kwargs):
+def update_csv(files, file_path, **kwargs):
     """Dumps Freesound data info into `file_path`.
 
     Args:
@@ -300,8 +300,15 @@ def write_info(files, file_path, **kwargs):
     """
     sound_info = [file.json_dict for file in files]
     if sound_info:
-        df = pd.DataFrame(sound_info)
-        df.to_csv(file_path, **kwargs)
+        try:
+            # Cannot use kwargs as read_csv and to_csv have different interfaces
+            sep = kwargs.get('sep', ',')
+            previous_data = pd.read_csv(file_path, sep=sep)
+        except FileNotFoundError:
+            previous_data = pd.DataFrame()
+        previous_data = previous_data.append(pd.DataFrame(sound_info))
+        previous_data.drop_duplicates(inplace=True)
+        previous_data.to_csv(file_path, **kwargs)
 
 
 def limit_exec(function=None, *, max_per_minute=50):
