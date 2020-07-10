@@ -243,3 +243,39 @@ def noise_from_signal(x):
 
     return out
 
+
+def third_octave_band(ref_freq=1000, i_band=None, n_band=18):
+    """Returns the center, lower and upper frequencies of the third octave filter bank which is centered around the
+    reference bandpass filter centered at `ref_freq`.
+
+    Args:
+      ref_freq (scalar): Center frequency in Hz of the center bandpass filter [default 1000]
+      i_band   (int): Index of the band of the filter expected. If None, all the (18) values are returned [default None]
+      n_band   (int): Number of filters expected in the filter bank.
+                      The filters will be symmetrically placed around `ref_freq` [default 18]
+
+    Return:
+      fc (scalar / np.ndarray):  Single value / Vector of the center frequencies of the filter bank
+      fl (scalar / np.ndarray):  Single value / Vector of the lower frequencies of the filter bank
+      fu (scalar / np.ndarray):  Single value / Vector of the upeper requencies of the filter bank
+
+    .. note::
+
+        From https://ccrma.stanford.edu/realsimple/aud_fb/Third_Octave_Filter_Banks.html
+        with f_0 = ref_freq, k=i_band, we have
+
+    .. math::    f_c = f_0 2^{k/3}
+    .. math::    f_l = f_0 2^{\frac{2k - 1}{6}} = f_c 2^{-\frac{1}{6}}
+    .. math::    f_u = f_0 2^{\frac{2k + 1}{6}} = f_c 2^{\frac{1}{6}}
+    """
+
+    if i_band is not None:
+        k = i_band
+    else:
+        k = np.arange(-np.floor((n_band - 1) / 2), np.floor(n_band / 2 + 1))
+
+    fc = 2 ** (k / 3) * ref_freq
+    fl = fc * 2 ** (-1/6)
+    fu = fc * 2 ** (1/6)
+
+    return fc, fl, fu
