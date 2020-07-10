@@ -72,7 +72,7 @@ def main(arguments=None):
         downloader = functools.partial(limited_download, output_dir=output_dir)
         for files in get_files(requests, config.fields_to_save, min_duration=config.min_duration):
             new_info = [file.json_dict for file in files]
-            update_csv(new_info, csv_path, sep='\t', header=True, index=False)
+            update_csv(new_info, csv_path, sort_label='id', sep='\t', header=True, index=False)
             files = list(filter(lambda x: not(osp.exists(osp.join(output_dir, f'{x.id}.{x.type}'))), files))
             filenames = [f'{file.id}.{file.type}' for file in files]
             func_exec(downloader, list(zip(files, filenames)))
@@ -289,7 +289,7 @@ def serial_exec(func, iterable):
     return [func(*val) for val in tqdm(iterable)]
 
 
-def update_csv(data, file_path, **kwargs):
+def update_csv(data, file_path, sort_label='', **kwargs):
     """Updates csv `file_path` with `data`.
 
     Duplicate information are dropped before writing to `file_path`.
@@ -297,6 +297,8 @@ def update_csv(data, file_path, **kwargs):
     Args:
         data (dict[str, list]): New data
         file_path (str): File where file info is dumped
+        sort_label (str): Label used to sort the data before dumping. Use ``''``
+            to not sort (Default: ``''``)
         kwargs (dict): Optional arguments given to pandas `to_csv` method
     """
     try:
@@ -307,6 +309,9 @@ def update_csv(data, file_path, **kwargs):
         previous_data = pd.DataFrame()
     previous_data = previous_data.append(pd.DataFrame(data))
     previous_data.drop_duplicates(inplace=True)
+    if sort_label:
+        # use mergesort to always have n*log(n) complexity
+        previous_data.sort_values(sort_label, inplace=True, kind='mergesort')
     previous_data.to_csv(file_path, **kwargs)
 
 
