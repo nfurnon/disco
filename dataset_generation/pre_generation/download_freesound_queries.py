@@ -68,15 +68,14 @@ def main(arguments=None):
         logger.info(f'Downloading category {dir_name}')
         output_dir = os.path.join(args.save_dir, dir_name)
         os.makedirs(output_dir, exist_ok=True)
-        list_files = []
+        csv_path = os.path.join(output_dir, f'freesound_domestic_noises_{dir_name}.csv')
         downloader = functools.partial(limited_download, output_dir=output_dir)
         for files in get_files(requests, config.fields_to_save, min_duration=config.min_duration):
-            list_files += files
+            new_info = [file.json_dict for file in files]
+            update_csv(new_info, csv_path, sep='\t', header=True, index=False)
             files = list(filter(lambda x: not(osp.exists(osp.join(output_dir, f'{x.id}.{x.type}'))), files))
             filenames = [f'{file.id}.{file.type}' for file in files]
             func_exec(downloader, list(zip(files, filenames)))
-        csv_path = os.path.join(output_dir, f'freesound_domestic_noises_{dir_name}.csv')
-        update_csv(list_files, csv_path, sep='\t', header=True, index=False)
 
 
 def parse_args(arguments):
@@ -290,25 +289,25 @@ def serial_exec(func, iterable):
     return [func(*val) for val in tqdm(iterable)]
 
 
-def update_csv(files, file_path, **kwargs):
-    """Dumps Freesound data info into `file_path`.
+def update_csv(data, file_path, **kwargs):
+    """Updates csv `file_path` with `data`.
+
+    Duplicate information are dropped before writing to `file_path`.
 
     Args:
-        files (list): Freesound files retrieved via the Freesound API
+        data (dict[str, list]): New data
         file_path (str): File where file info is dumped
         kwargs (dict): Optional arguments given to pandas `to_csv` method
     """
-    sound_info = [file.json_dict for file in files]
-    if sound_info:
-        try:
-            # Cannot use kwargs as read_csv and to_csv have different interfaces
-            sep = kwargs.get('sep', ',')
-            previous_data = pd.read_csv(file_path, sep=sep)
-        except FileNotFoundError:
-            previous_data = pd.DataFrame()
-        previous_data = previous_data.append(pd.DataFrame(sound_info))
-        previous_data.drop_duplicates(inplace=True)
-        previous_data.to_csv(file_path, **kwargs)
+    try:
+        # Cannot use kwargs as read_csv and to_csv have different interfaces
+        sep = kwargs.get('sep', ',')
+        previous_data = pd.read_csv(file_path, sep=sep)
+    except FileNotFoundError:
+        previous_data = pd.DataFrame()
+    previous_data = previous_data.append(pd.DataFrame(data))
+    previous_data.drop_duplicates(inplace=True)
+    previous_data.to_csv(file_path, **kwargs)
 
 
 def limit_exec(function=None, *, max_per_minute=50):
