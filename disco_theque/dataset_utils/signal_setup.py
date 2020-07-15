@@ -4,31 +4,50 @@ from disco_theque.sigproc_utils import vad_oracle_batch, noise_from_signal, stac
 
 
 class SignalSetup:
-    """
-    Class of setup for what deals with the signals: SNR, corpus they are taken from, duration.
+    """ Class of setup for what deals with the signals: SNR, corpus they are taken from, duration.
+
     It is based on a list-logic, that is to say that the WAV files are picked among the limited possibilities of a list.
     This is because the database generation is expected to be run on parallel processes, so we want to avoid taking two
     times the same WAV file.
+
     """
 
     def __init__(self, target_list, talkers_list, noises_dict, duration_range, var_tar, snr_dry_range, snr_cnv_range,
                  min_delta_snr):
-        self.target_list = target_list  # List where we pick target signal from
+        """Initializes instance.
+
+        Args:
+            target_list (list[str]): Target signals
+            talkers_list (list[str]): List of talkers used to create SSN
+            noises_dict (dict[str, list[str]]): Noise in noise type to list of noise file format
+            duration_range (tuple[float, float]): Min and max duration in seconds of signals. Signals shorter than min
+                are padded to max
+            var_tar (float): Desired variance of all target signals
+            snr_dry_range (np.ndarray): SNR range of dry signals (at loudspeakers) in (n_signals x 2) shape
+            snr_cnv_range (np.ndarray): SNR range of convolved signals (at microphones)
+            min_delta_snr: Maximum difference of SNRs between nodes
+
+        """
+        self.target_list = target_list
         self.ssn_list = talkers_list
-        self.noises_dict = noises_dict  # Lists where we pick noise signal from
-        self.duration_range = duration_range  # min_dur, max_dur of signals (signals > min are padded to max)
-        self.target_duration = None  # Duration of target signal -- determined in get_target_segment
-        self.var_tar = var_tar  # Normalized variance of all target signals
-        self.snr_dry_range = snr_dry_range  # SNR range of dry signals (at loudspeakers)
-        self.snr_cnv_range = snr_cnv_range  # SNR range of convolved signals (at microphones)
-        self.min_delta_snr = min_delta_snr  # Maximum difference of SNRs between nodes
+        self.noises_dict = noises_dict
+        self.duration_range = duration_range
+        self.target_duration = None
+        self.var_tar = var_tar
+        self.snr_dry_range = snr_dry_range
+        self.snr_cnv_range = snr_cnv_range
+        self.min_delta_snr = min_delta_snr
         self.source_snr = np.zeros(np.shape(snr_dry_range)[0])
 
     def get_target_segment(self, target_file):
-        """
-        Return source signals (one noise, one target)
-        :param target_file:     name of an audio file
-        :return:                If target_file is long enough, the reshaped signal; if too short, None
+        """Gets a segment from `target_file`.
+
+        Args:
+            target_file (str): Name of an audio file
+
+        Returns:
+            tuple: scaled target, vad of target, sampling frequency of target in Hz
+
         """
         min_duration, max_duration = self.duration_range[0], self.duration_range[1]
         signal, fs = sf.read(target_file)
@@ -54,6 +73,16 @@ class SignalSetup:
         return ssignal, vsignal, fs
 
     def get_noise_segment(self, n_type, duration):
+        """Gets noise segment.
+
+        Args:
+            n_type (str): Noise type
+            duration (float): Noise duration in seconds
+
+        Returns:
+            tuple: noise segment, file name, noise VAD, noise sample rate
+
+        """
         fs = 16000
         n_types = [nm for nm in self.noises_dict.keys()]
         if n_type.lower() in n_types:
@@ -76,11 +105,17 @@ class SignalSetup:
         return n, n_file, n_file_start, noise_vad, fs
 
     def _read_random_signal(self, n_type, duration):
-        """
-        Read a random duration of a random signal among signals listed in self.noise_dict[n_type]
-        :param n_type:      Type of the noise ("chime", "freesound", ...)
-        :param duration:    Duration of the noise
-        :return:
+        """Reads a noise signal of random duration.
+
+        The noise signal is selected randomly from :attr:`noise_dict` in the field `n_type`.
+
+        Args:
+            n_type (str): Noise type
+            duration (float): Duration in seconds
+
+        Returns:
+            tuple: noise signal, sample rate, file name, start time of noise (in samples)
+
         """
         assert (duration > 0), "Duration should be strictly positive"
         noise_list = self.noises_dict[n_type]
@@ -103,8 +138,13 @@ class SignalSetup:
         return y, fs, noise_list[rnd_file], rnd_start
 
     def get_random_dry_snr(self):
-        """
-        :return:    Random SNR values uniformly picked between self.snr_dry_range[0] and self.snr_dry_range[1]
+        """Draws SNR for each source.
+
+        SNRs are drawn from a uniform distribution defined in :attr:`snr_dry_range`.
+
+        Returns:
+            np.ndarray: Random SNRs
+
         """
         n_sources = np.shape(self.snr_dry_range)[0]
         for i_source in range(n_sources):
