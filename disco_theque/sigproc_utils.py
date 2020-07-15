@@ -86,7 +86,7 @@ def third_octave_filterbank(F, fs, order=8):
 
 #%% Metric
 def fw_snr(s, n, fs, vad_tar=None, vad_noi=None, clipping=1, db=True):
-    """Computes the SNR weighted by the speech intelligibility.
+    """Computes the SNR weighted by the speech intelligibility as defined in [1].
 
     Args:
         s: Target speech
@@ -103,6 +103,8 @@ def fw_snr(s, n, fs, vad_tar=None, vad_noi=None, clipping=1, db=True):
             * fw_snr_mean: Average fw_SNR
             * F: Center frequencies
 
+    [1] Pavlovic, Chaslav V. "Band importance functions for audiological applications."
+        Ear and Hearing 15.1 (1994): 100-104.
     """
     # Band importance function
     r = 2**(1/6)
