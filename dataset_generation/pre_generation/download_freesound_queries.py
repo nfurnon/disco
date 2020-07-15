@@ -3,6 +3,8 @@
 To get an access token, please follow the instructions at
 https://freesound.org/docs/api/authentication.html#oauth2-authentication
 
+Queries are found by trial and error on the freesound website.
+
 Configuration file example:
 
 .. code-block:: yaml
@@ -37,6 +39,7 @@ import pandas as pd
 import yaml
 
 import istarmap
+import utils
 
 
 def main(arguments=None):
@@ -47,7 +50,7 @@ def main(arguments=None):
     """
     args = parse_args(arguments)
     config = Config.from_yaml(args.config)
-    logger = set_up_log(level=1)
+    logger = utils.set_up_log(level=1)
 
     if args.num_jobs > 1:
         func_exec = functools.partial(parallel_exec, num_proc=args.num_jobs)
@@ -66,15 +69,14 @@ def main(arguments=None):
         logger.info(f'Downloading category {dir_name}')
         output_dir = os.path.join(args.save_dir, dir_name)
         os.makedirs(output_dir, exist_ok=True)
-        list_files = []
+        csv_path = os.path.join(output_dir, f'freesound_domestic_noises_{dir_name}.csv')
         downloader = functools.partial(limited_download, output_dir=output_dir)
         for files in get_files(requests, config.fields_to_save, min_duration=config.min_duration):
-            list_files += files
+            new_info = [file.json_dict for file in files]
+            update_csv(new_info, csv_path, sort_label='id', sep='\t', header=True, index=False)
             files = list(filter(lambda x: not(osp.exists(osp.join(output_dir, f'{x.id}.{x.type}'))), files))
             filenames = [f'{file.id}.{file.type}' for file in files]
             func_exec(downloader, list(zip(files, filenames)))
-        csv_path = os.path.join(output_dir, f'freesound_domestic_noises_{dir_name}.csv')
-        write_info(list_files, csv_path, sep='\t', header=True, index=False)
 
 
 def parse_args(arguments):
@@ -230,39 +232,6 @@ def extract_category_ids(id_file):
     return df.to_dict(orient='list')
 
 
-def set_up_log(logfile='', level=0):
-    """Sets up root logger.
-
-    Args:
-        logfile (str, optional): Log file. Pass empty string to write to std.err (Default: '')
-        level (int, optional): Verbosity level (Default: 0)
-            * 0: warnings only
-            * 1: info and warnings
-            * otherwise: debug, info and warnings
-
-    Returns:
-        logging.Logger: Formatted root logger
-    """
-    log_format = '[%(levelname)s] %(asctime)s %(funcName)s: %(message)s'
-    time_format = '%Y-%m-%d %H:%M:%S'
-    formatter = logging.Formatter(log_format, time_format)
-    if logfile:
-        os.makedirs(os.path.dirname(logfile), exist_ok=True)
-        handler = logging.FileHandler(logfile)
-    else:
-        handler = logging.StreamHandler(sys.stderr)
-    handler.setFormatter(formatter)
-    logger = logging.getLogger()
-    logger.handlers = [handler]
-    if level == 0:
-        logger.setLevel(logging.WARNING)
-    elif level == 1:
-        logger.setLevel(logging.INFO)
-    else:
-        logger.setLevel(logging.DEBUG)
-    return logger
-
-
 def parallel_exec(func, iterable, num_proc):
     """Executes `func` over `num_proc` processes.
 
@@ -288,18 +257,30 @@ def serial_exec(func, iterable):
     return [func(*val) for val in tqdm(iterable)]
 
 
-def write_info(files, file_path, **kwargs):
-    """Dumps Freesound data info into `file_path`.
+def update_csv(data, file_path, sort_label='', **kwargs):
+    """Updates csv `file_path` with `data`.
+
+    Duplicate information are dropped before writing to `file_path`.
 
     Args:
-        files (list): Freesound files retrieved via the Freesound API
+        data (dict[str, list]): New data
         file_path (str): File where file info is dumped
+        sort_label (str): Label used to sort the data before dumping. Use ``''``
+            to not sort (Default: ``''``)
         kwargs (dict): Optional arguments given to pandas `to_csv` method
     """
-    sound_info = [file.json_dict for file in files]
-    if sound_info:
-        df = pd.DataFrame(sound_info)
-        df.to_csv(file_path, **kwargs)
+    try:
+        # Cannot use kwargs as read_csv and to_csv have different interfaces
+        sep = kwargs.get('sep', ',')
+        previous_data = pd.read_csv(file_path, sep=sep)
+    except FileNotFoundError:
+        previous_data = pd.DataFrame()
+    previous_data = previous_data.append(pd.DataFrame(data))
+    previous_data.drop_duplicates(inplace=True)
+    if sort_label:
+        # use mergesort to always have n*log(n) complexity
+        previous_data.sort_values(sort_label, inplace=True, kind='mergesort')
+    previous_data.to_csv(file_path, **kwargs)
 
 
 def limit_exec(function=None, *, max_per_minute=50):

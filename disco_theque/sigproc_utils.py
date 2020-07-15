@@ -61,7 +61,7 @@ def third_octave_filterbank(F, fs, order=8):
     Row `i` of the returned arrays contain the coefficients for the `i`-th filter
 
     .. warning::
-    
+
         Suboptimal minimalist function
 
     Args:
@@ -123,7 +123,7 @@ def fw_snr(s, n, fs, vad_tar=None, vad_noi=None, clipping=1, db=True):
         N = np.sum(f2 < fs/2)
         F = F[:N]
         I = I[:N]
-        
+
     snr_var = np.zeros((N,))
     s_p = np.zeros((N,))
     n_p = np.zeros((N,))
@@ -144,7 +144,7 @@ def fw_snr(s, n, fs, vad_tar=None, vad_noi=None, clipping=1, db=True):
             n_p[i] = lin2db(np.var(n_f[i][vad_noi != 0]))
 
         snr_var[i] = s_p[i] - n_p[i]
-        
+
         if clipping:
             snr_var[i] = np.minimum(np.maximum(-15, snr_var[i]), 25)
 
@@ -197,11 +197,12 @@ def stack_talkers(tlk_list, dur_min, speaker, nb_tlk=5):
 
     Args:
       tlk_list (list[str]): list of flac/wav files to pick talkers in
-      dur_min: Minimal duration *in seconds* of the signal
-      speaker:
+      dur_min: Minimal duration *in seconds* of the output signal
+      speaker (str): ID of speaker to skip when concatenating speech signals
       nb_tlk (int):  (Default: 5)
 
     Returns:
+        np.ndarray: Concatenated speech from at least `nb_tlk` talkers
 
     """
     i_tlk = 0
@@ -231,7 +232,7 @@ def noise_from_signal(x):
 
     Returns:
         np.ndarray: Noise signal
-    
+
     """
     x = np.asarray(x)
     n_x = x.shape[-1]
