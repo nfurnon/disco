@@ -195,11 +195,12 @@ def stack_talkers(tlk_list, dur_min, speaker, nb_tlk=5):
 
     Args:
       tlk_list (list[str]): list of flac/wav files to pick talkers in
-      dur_min: Minimal duration *in seconds* of the signal
-      speaker:
+      dur_min: Minimal duration *in seconds* of the output signal
+      speaker (str): ID of speaker to skip when concatenating speech signals
       nb_tlk (int):  (Default: 5)
 
     Returns:
+        np.ndarray: Concatenated speech from at least `nb_tlk` talkers
 
     """
     i_tlk = 0
