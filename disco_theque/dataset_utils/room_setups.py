@@ -5,8 +5,8 @@ from pyroomacoustics import circular_2D_array
 
 
 class RandomRoomSetup:
-    """
-    Class of a room, including its geometry, the sources and sensors positions.
+    """Class of a room, including its geometry, the sources and sensors positions.
+
     The class returns only the nodes centers, in order to build circular arrays.
     """
 
@@ -15,6 +15,26 @@ class RandomRoomSetup:
                  d_rnd_mics,
                  n_sources, d_ss, d_sn, d_sw, z_range_s,  # Sources parameters
                  **kwargs):
+        """Initializes instance.
+
+        Args:
+            l_range (tuple[float, float]): Room length range
+            w_range (tuple[float, float]): Room width range
+            h_range (tuple[float, float]): Room height range
+            beta_range (tuple[float, float]): Range of RT 60
+            n_sensors_per_node (list[int]): Number of microphones per node
+            d_mw:
+            d_mn:
+            d_nn:
+            z_range_m (tuple[float, float]): Node range along z axis
+            d_rnd_mics (float): Minimum distance between random microphones
+            n_sources (int): Number of sources
+            d_ss (float): Source to source distance
+            d_sn (float): Source to node distance
+            d_sw (float): Source to wall distance
+            z_range_s (tuple[float, float]): Source range along z axis
+            kwargs:
+        """
 
         # Unchanged attributes once the class instantiated
         self.sensors_per_node = n_sensors_per_node
@@ -74,12 +94,17 @@ class RandomRoomSetup:
         return length, width, height, alpha, beta
 
     def get_nodes_centers(self):
-        """
-        Returns the center of the nodes of the array. They are randomly put in the room, under the constraints:
+        """ Returns the center of the nodes of the array.
+
+        They are randomly put in the room, under the constraints:
             - at least d_mw + d_mn from thz_se  walls (so that all microphones are at least d_mw from walls)
             - at least d_nodes from each other (in the z=z_m plane)
-        :return:
-        A n_nodes x 3 array, gathering for all nodes the (x, y, z) coordinates of their centre.
+
+        The returned centers are organized in a (n_nodes x 3) array, which gathers for all nodes the (x, y, z)
+        coordinates of their centre.
+
+        Returns:
+            tuple: node center coordinate, number of trials to get these centers
         """
         nodes_centers = np.zeros((self.n_nodes, 3))
         # Initialize
@@ -109,13 +134,17 @@ class RandomRoomSetup:
         return nodes_centers, n_trials
 
     def get_random_mics_positions(self):
-        """
-        Return the (x, y, z) coordinates of two microphones randomly placed in the room, at least distant of self.d_wal
-        from the walls and self.d_rnd_mic from each other.
+        """Return the (x, y, z) coordinates of two microphones randomly placed in the room.
+
+        The microphones are, at least, distant of self.d_wal from the walls and self.d_rnd_mic from each other.
+
         This is done in a separate function because we will use these microphones only to create diffuse noise
         (by convolving the noise with the sum of the reverberation tails).
         So the microphones may be close to the actually used microphones.
-        :return:
+
+        Returns:
+            tuple: microphone 1, microphone 2 cartesian coordinates
+
         """
         m1_x = self.d_nw + (self.length - 2 * self.d_nw) * np.random.rand()
         m1_y = self.d_nw + (self.width - 2 * self.d_nw) * np.random.rand()
@@ -131,15 +160,17 @@ class RandomRoomSetup:
         return [m1_x, m1_y, z_], [m2_x, m2_y, z_]
 
     def get_source_positions(self):
-        """
-        Get positions of the sources. They are randomly placed in the room, with the following constraints:
-            - at least d_sw from the walls (so that all microphones are at least d_wal from walls)
-            - at least d_sn from all other sources
-            - at least d_ss from each other (in the z=z_s plane)
+        """Get positions of the sources.
 
-        :return:
-            - Sources positions (x, y, z)
-            - a counter: if equal to 100, no configuration was found and new input arguments should be given
+        Sources are randomly placed in the room, with the following constraints:
+            * at least d_sw from the walls (so that all microphones are at least d_wal from walls)
+            * at least d_sn from all other sources
+            * at least d_ss from each other (in the z=z_s plane)
+
+        Returns:
+            * Sources positions (x, y, z)
+            * a counter: if equal to 100, no configuration was found and new input arguments should be given
+
         """
         sources_positions = np.zeros((self.n_sources, 3))
         # Initialize
@@ -180,10 +211,14 @@ class RandomRoomSetup:
         return sources_positions, n_trials
 
     def add_circular_microphones(self):
-        """
-        Add the microphones to the room class, by creating circular 2D arrays around the nodes centres.
-        The height of microphones is constant at self.z_m.
-        :return:
+        """Adds the microphones to the room class.
+
+        The microphones are positioned on a circle centered at the node centers.
+        The height of the microphones is constant at self.z_m.
+
+        Returns:
+            np.ndarray: Microphone coordinates.
+
         """
         n_mics = np.sum(self.sensors_per_node)  # Total number of microphones
         node_mics = np.zeros((3, n_mics))  # Array of mics (has to be (x, y [, z]) x n_mics for pra.mic_array)
@@ -218,22 +253,25 @@ class RandomRoomSetup:
 
 
 class MeetingRoomSetup(RandomRoomSetup):
-    """
-    Class of a meeting room setup, where a table is in the room, 4 nodes placed on the table and two sources around
-    the table. A third noise source is located somewhere close to the walls.
+    """Class of a metting room setup.
+
+    There is a table in the room, 4 nodes are placed on the table and two sources around the table. A third noise source
+    is located somewhere close to the walls.
     First noise source is interferent speaker, the second is another environmental noise (running water, copy-machine,
      ...)
     """
 
     def __init__(self, r_range, d_nt_range, d_st_range, phi_ss_range=None, phi_ss_choice=None, **kwargs):
-        """
-        :param r_range:     Table radius in meters
-        :param d_nt_range   Distance range between nodes and table edge
-        :param d_st_range   Distance range between sources and table edge.
-                            NB: it should not be too high, as this would restrict the possible locations of the table
-        :param phi_ss:      Either a scalar or an array/list.
-                                - If scalar: maximum angle between the two sources around the table, IN RAD
-                                - If array: limited choices of accepted angles between the two sources, IN RAD
+        """Initializes instance.
+
+        Arguments:
+            r_range: Table radius in meters
+            d_nt_range: Distance range between nodes and table edge
+            d_st_range: Distance range between sources and table edge.
+                NB: it should not be too high, as this would restrict the possible locations of the table
+            phi_ss: Either a scalar or an array/list.
+                * If scalar: maximum angle between the two sources around the table, IN RAD
+                * If array: limited choices of accepted angles between the two sources, IN RAD
         """
         RandomRoomSetup.__init__(self, **kwargs)
         self.r_range = r_range
@@ -244,9 +282,10 @@ class MeetingRoomSetup(RandomRoomSetup):
         self.table_center, self.table_radius = None, None
 
     def __get_table_position(self):
-        """
-        Place the table center and chose its diameter.
-        :return:
+        """Places the table center and choses its diameter.
+
+        Returns:
+            tuple: table center, table radius
         """
         # Fix dimension of table
         r = self.r_range[0] + (self.r_range[1] - self.r_range[0]) * np.random.rand()
@@ -264,9 +303,10 @@ class MeetingRoomSetup(RandomRoomSetup):
         return self.table_center, self.table_radius
 
     def get_nodes_centers(self):
-        """
-        Place the nodes centers on the table
-        :return:
+        """Places the nodes centers on the table.
+
+        Returns:
+            tuple: node centers, 0
         """
         # Preallocate
         nodes_centers = np.zeros((self.n_nodes, 3))
@@ -285,11 +325,13 @@ class MeetingRoomSetup(RandomRoomSetup):
         return nodes_centers, 0
 
     def get_source_positions(self):
-        """
-        Place two sources around the table and one third close to a wall. self.node_centers should aready be not None.
-        :return:
-            - source_positions: n_sources, x, y, z
-            - As the scenario is constrained, the sources positions are always valid, and counter remains at 0
+        """Place two sources around the table and one third close to a wall.
+
+        self.node_centers should aready be not None.
+        
+        Returns:
+            * source_positions: n_sources, x, y, z
+            * As the scenario is constrained, the sources positions are always valid, and counter remains at 0
         """
         # Fix angle between source and first node
         phi_st = 2 * np.pi * np.random.rand()
@@ -349,30 +391,31 @@ class MeetingRoomSetup(RandomRoomSetup):
 
 
 class LivingRoomSetup(RandomRoomSetup):
-    """
-    Simulate a living room-kind of scenario, where the nodes are close to the walls and the sources rather inside the
-    network they build. Each node is close to a different wall than the others (i.e. a wall is "occupied" by a single
-    node).
+    """Simulates a living room-kind of scenario.
+
+    Nodes are close to the walls and the sources rather inside the network they build. Each node is close to a different
+    wall than the others (i.e. a wall is "occupied" by a single node).
     In this class, the variable d_nw determines the *maximum* distance of nodes to the wall, rather
     than the minimum one.
     """
 
     def __init__(self, **kwargs):
-        """
+        """Initializes class.
+
         d_mw should be the maximum authorized distance of microphones to the wall
-        :param kwargs:
         """
         RandomRoomSetup.__init__(self, **kwargs)
         self.d_mw_min = 0.02  # Hard coded minimal distance of mics to wall
         self.d_nw = self.d_mw - self.d_mn
 
     def get_nodes_centers(self):
-        """
-        Nodes are close to the wall, within d_nw.
-        :return:
-            - nodes_centers:    Centers (x, y, z) of the mics, shape is n_nodes x 3
-            - n_trials.         If equal to 100, no position could be found satisfying the given constraits
-                                (distances between nodes mainly)
+        """ Nodes are close to the wall, within d_nw.
+
+        Returns:
+            tuple:
+                * nodes_centers: Centers (x, y, z) of the mics, shape is n_nodes x 3
+                * n_trials: If equal to 100, no position could be found satisfying the given constraits
+                    (distances between nodes mainly)
         """
         nodes_centers = np.zeros((self.n_nodes, 3))
         # We position four nodes at four walls, and randomly select three of them. The fourth node is somewhere in the
