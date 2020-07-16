@@ -1,20 +1,12 @@
 ### pre_generation
-This folders contains:
- * [download_freesound_queries.py](./download_freesound_queries.py): A python script to download sounds 
-    from [freesound](https://freesound.org/) either by requesting specific queries or by requesting a list
-    of ids.
-    
-    __Example__:
-    
-    ```
-    python download_freesound_queries.py --download_type serial --query_by query --save_dir tmp --min_duration 5.5
-   ```
- * [ids_per_category.csv](./ids_per_category.csv): An example of (pre-selected) list of freesounds IDs
-    and their corresponding category/tag/sound type.
-    
-    __Example__:
-    
-    ```
-   python download_freesound_queries.py --download_type parallel --query_by id  --file_of_ids ids_per_category.csv \
-                                          --save_dir tmp --min_duration 5.5
-   ```
+Scripts to download [freesound](freesound.org/) files either from queries or from IDs. An [example file](config.yaml) is given to show how to use the [main script](download_freesound_queries.py).
+
+To get an access token, follow [these instructions](https://freesound.org/docs/api/authentication.html#oauth2-authentication). We will assume that our token is AbcD12eF.
+
+__Example:__ Serial download
+
+```python
+python download_freesound_queries AbcD12eF config.yaml
+```
+
+
