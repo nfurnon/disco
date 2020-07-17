@@ -1,1 +1,4 @@
+disco.egg-info
 __pycache__
+doc/build
+doc/source/apidoc
