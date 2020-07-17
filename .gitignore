@@ -1,4 +1,6 @@
 disco.egg-info
 __pycache__
+.coverage
+coverage_html_report
 doc/build
 doc/source/apidoc
