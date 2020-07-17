@@ -1,0 +1,20 @@
+id_file:
+queries:
+  baby: "baby cry"
+  blender: "mixer,blender kitchen"
+  dishwasher: "dishwasher -door"
+  fan: ["fan vent", "air conditioner"]
+  fireplace: "fireplace,chimney - wind"
+  printer: "printer -laser-warming-startup"
+  rain: "rain window"
+  vacuum_cleaner : "vacuum cleaner-off -on"
+  washing_machine: "washing machine-beat"
+  water: "water sink"
+fields_to_save:
+  - "id"
+  - "name"
+  - "type"
+  - "license"
+  - "username"
+  - "duration"
+min_duration: 3 
