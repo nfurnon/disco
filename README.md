@@ -3,6 +3,28 @@ This repository gathers scripts to:
  * [download files](./dataset_generation/pre_generation) from [freesound](freesound.org/)
  * [Simulate microphone arrays and their recordings](./dataset_generation/generation) using [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics)
 
+
+### Install
+
+#### In an anaconda environment
+
+To install the content of this package inside an anaconda environment, make sure
+that:
+
+1. the environment has been created (see [official conda
+   documentation][conda_env] for more info)
+2. the environment is currently active
+
+Then follow the steps outlined in the next subsection.
+
+#### Auto-install
+
+Type `make install` from the command line.
+
+__Note__: The installation of `soundfile` may fail as it requires `libsndfile`
+to be installed on the machine. To make it succeed, make sure `libsndfile` is
+installed before running `make install`.
+
 ### To generate the DISCO dataset:
 __1. Download freesound files__
 
@@ -53,3 +75,5 @@ structure:
             │
             └──chapterC
 ```
+
+[conda_env]: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
