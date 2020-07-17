@@ -29,13 +29,18 @@ installed before running `make install`.
 __1. Download freesound files__
 
 Example:
-```
+```bash
 python dataset_generation/pre_generation/download_freesound_queries.py \
-        --download_type parallel \
-        --query_by id \
-        --file_of_ids dataset_generation/pre_generation/ids_per_category.csv \
-        --save_dir ../../dataset/freesound/data/train/ \
-        --min_duration 5.5
+        --num_jobs 4 \
+        --save_dir ../../../dataset/freesound/data/train \
+        <freesound_token> \
+        config.yaml
+```
+
+For more information about the program, type
+
+```bash
+python dataset_generation/pre_generation/download_freesound_queries.py --help
 ```
 
 __2. Simulate RIRs and convolve the signals__.
