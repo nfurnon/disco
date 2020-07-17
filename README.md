@@ -77,3 +77,27 @@ structure:
 ```
 
 [conda_env]: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
+
+### Tests & Documentation
+
+#### Tests
+
+Tests provide examples of how functions and classes are to be used in addition
+to ensuring that modifications made to the source code are backward compatible.
+The test files are all under the directory named `tests`.
+
+To run the tests, simply type `pytest` from the command line.
+
+To generate a coverage report, type `make coverage` from the command line. This
+will generate a directory named `coverage_html_report`, which contains the
+coverage report.
+
+#### Documentation
+
+To generate the documentation, type `make doc` from the command line.
+
+#### Shortcut
+
+In case one wishes to generate a coverage report as well as the documentation,
+one simply needs to type `make` from the command line. Under the hood, the
+commands `make coverage` and `make doc` will be run.
