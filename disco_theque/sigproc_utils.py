@@ -1,5 +1,6 @@
 import re
 import os
+import sys
 import scipy
 import numpy as np
 import soundfile as sf
@@ -7,7 +8,7 @@ from acoustics.signal import OctaveBand
 from disco_theque.math_utils import next_pow_2, lin2db, db2lin
 
 
-#%% VAD
+#%% VAD and mask
 def vad_oracle_batch(x_, win_len=512, win_hop=256, thr=0.001, rat=2):
     """Estimates voice activity segments based on signal power.
 
@@ -52,6 +53,37 @@ def vad_oracle_batch(x_, win_len=512, win_hop=256, thr=0.001, rat=2):
         if nb_va >= np.int(N_ / rat):
             vad_o[n * win_hop:np.minimum(n * win_hop + win_len, len(x2))] = 1
     return vad_o
+
+
+def tf_mask(s, n, type='irm1', bin_thr=0):
+    """
+    Compute the TF mask when s and n are target and noise STFT respectively.
+    Args:
+        s:  Target spectrogram
+        n: Noise spectrogram
+        type: 'irmX', 'ibmX', 'iamX' with X an integer, depending on desired type of TF-mask
+        bin_thr: threshold in dB for the binary mask [0]
+
+    Returns:
+        m:  TF-mask. Same shape as `s` and `n`.
+    """
+
+    assert s.shape == n.shape, "Input spectrograms should have the same shape."
+    power = int(type[-1])
+    if 'irm' in type:
+        n_ = np.maximum(abs(n), sys.float_info.epsilon)
+        xi = (abs(s) / n_) ** power
+        m = xi / (1 + xi)
+    elif 'ibm' in type:
+        n_ = np.maximum(abs(n), sys.float_info.epsilon)
+        xi = (abs(s) / n_) ** power
+        m = (xi >= db2lin(bin_thr))
+    elif 'iam' in type:
+        m = (abs(s) / abs(s + n)) ** power
+    else:
+        raise ValueError('Unknown mask type. Should be "irmX", "ibmX" or "iamX"')
+
+    return m
 
 
 #%% Filterbanks
