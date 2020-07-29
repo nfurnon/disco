@@ -23,9 +23,9 @@ class RandomRoomSetup:
             h_range (tuple[float, float]): Room height range
             beta_range (tuple[float, float]): Range of RT 60
             n_sensors_per_node (list[int]): Number of microphones per node
-            d_mw:
-            d_mn:
-            d_nn:
+            d_mw: (float): microphone to wall distance
+            d_mn: (float): microphone to node center distance
+            d_nn: (float): node center to node center distance
             z_range_m (tuple[float, float]): Node range along z axis
             d_rnd_mics (float): Minimum distance between random microphones
             n_sources (int): Number of sources
@@ -89,7 +89,7 @@ class RandomRoomSetup:
 
         # Acoustic properties
         beta = beta_range[0] + (beta_range[1] - beta_range[0]) * np.random.rand()
-        alpha = 1 - np.exp((0.017 * beta - 0.1611) * vol / (beta * sur))
+        alpha = 1 - np.exp((1.7e-5 * beta - 0.1611) * vol / (beta * sur))
 
         return length, width, height, alpha, beta
 
@@ -281,7 +281,7 @@ class MeetingRoomSetup(RandomRoomSetup):
         self.d_nt, self.d_st, self.phi_t = None, None, None
         self.table_center, self.table_radius = None, None
 
-    def __get_table_position(self):
+    def get_table_position(self):
         """Places the table center and choses its diameter.
 
         Returns:
@@ -311,7 +311,7 @@ class MeetingRoomSetup(RandomRoomSetup):
         # Preallocate
         nodes_centers = np.zeros((self.n_nodes, 3))
         # Parameters
-        table_center, table_radius = self.__get_table_position()
+        table_center, table_radius = self.get_table_position()
         self.phi_t = 2 * np.pi / self.n_nodes * np.random.rand()  # Central symmetry --> Redundant angles
         # Position
         nodes_centers[:, :2] = circular_2D_array(table_center[:2], self.n_nodes, self.phi_t, table_radius - self.d_nt).T
@@ -352,25 +352,7 @@ class MeetingRoomSetup(RandomRoomSetup):
         y_2 = self.table_center[1] + d_to_node * np.sin(self.phi_t + phi_st + phi_sources)
         z_2 = self.z_range_s[0] + (self.z_range_s[1] - self.z_range_s[0]) * np.random.rand()
 
-        # Third source
-        x_is_free = np.random.randint(2)
-        if x_is_free:  # Source can be anywhere close to the 'upper' or 'lower' wall (when looking from above)
-            x_3 = self.length * np.random.rand()
-            take_lower_wall = np.random.randint(2)
-            if take_lower_wall:
-                y_3 = self.d_sw * np.random.rand()
-            else:
-                y_3 = self.width - self.d_sw * np.random.rand()
-        else:
-            y_3 = self.width * np.random.rand()  # Source anywere along the 'vertical' walls
-            taker_left_wall = np.random.randint(2)
-            if taker_left_wall:
-                x_3 = self.d_sw * np.random.rand()
-            else:
-                x_3 = self.length - self.d_sw * np.random.rand()
-        z_3 = self.height * np.random.rand()
-
-        return np.array([(x_1, y_1, z_1), (x_2, y_2, z_2), (x_3, y_3, z_3)]), 0
+        return np.array([(x_1, y_1, z_1), (x_2, y_2, z_2)]), 0
 
     def plot_room(self):
         plt.figure()
