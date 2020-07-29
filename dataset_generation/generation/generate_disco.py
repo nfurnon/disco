@@ -15,10 +15,10 @@ from disco_theque.dataset_utils.signal_setup import SignalSetup
 def create_directories(output_path, scene, case):
     """
     Create the directories where all the files will be saved
-    :param output_path:     (str)   root directory where the (sub-)folders will be created
-    :param scene:           (str)   living/meeting/random   Name of the first subdirectory relative to the scenario
-    :param case:            (str)   test/train/val
-    :return:                (str)   the name of the root directory
+    Args:
+        str: root directory where the (sub-)folders will be created
+        str: living/meeting/random   Name of the first subdirectory relative to the scenario
+        str: test/train/val
     """
     os.makedirs(os.path.join(output_path, scene, case, 'log'), exist_ok=True)
     os.makedirs(os.path.join(output_path, scene, case, 'wav'), exist_ok=True)
@@ -34,8 +34,16 @@ def get_wavs_list(path_to_freesound, path_to_librispeech, case, scene):
     """
     Return lists of wavs for the target and noise signals, as well as a list of speakers which one can pick from to
     compute a SSN noise.
-    :param case:
-    :return:
+    Args:
+        str: path of freesound folder (before train/test/val)
+        str: path of LibriSpeech folder (before train-clean-360)
+        str: train/test/val
+        str: living/random/meeting
+
+    Returns:
+        list:   list of the LibriSpeech target speech files
+        list:   list of the LibriSpeech interferent speech files
+        dict:   dictionnary of {noise_type: noise_list}
     """
     fs_list = glob.glob(os.path.join(path_to_freesound, case) + '/*/*.wav')
     if case == 'test':
@@ -62,11 +70,12 @@ def get_wavs_list(path_to_freesound, path_to_librispeech, case, scene):
 def mix_signals(room):
     """ Simulate the room that has been instantiated. Return mixed signals at microphones, image signals (unmixed ones)
     and the RIR
-    :param room:                        pyroomacoustic's instance of room with mics and sources positions and sources
-                                        images.
-    :return clean_reverbed_signals:     Image signals
-            mixed_reberbed_signals:     Mixed signals
-            rirs:                       Room impulse response from every source to every microphone
+    Args:
+        pra instance:   pyroomacoustic's instance of room with mics and sources positions and sources images.
+    Returns:
+        np.ndarray: Image signals
+        np.ndarray: Mixed signals
+        np.ndarray: Room impulse response from every source to every microphone
     """
     room.image_source_model(use_libroom=True)
     room.compute_rir()
@@ -90,10 +99,13 @@ def get_image_statistics(x):
 
 def delay_vads(x, h):
     """
-    Delay a signal x by the peak index of the transfer function h
-    :param x:
-    :param h:       RIRs (n_mic x n_sources x time)
-    :return:
+    Delay a signal x by the peak index of the transfer function h. To do so, pad 0s at the beginning of the signal.
+    Args:
+        np.ndarray: input signal (1D) to delay
+        np.ndarray: RIR (n_mic x n_sources x time)
+
+    Returns:
+        np.ndarray:  `n_mic` versions of `x` delayed (n_mic x time)
     """
     n_mics = np.shape(h)[0]
     n_samp = np.maximum(np.max([len(h_) for h_ in np.array(h)[:, 0]]), np.max([len(h_) for h_ in np.array(h)[:, 1]]))
@@ -113,9 +125,12 @@ def delay_vads(x, h):
 
 def get_convolved_vads(x):
     """
-    Compute VAD on image signals of the target
-    :param  x:      Array of image signals we want to compute the VAD of. Time dimension is the last (2nd) one.
-    :return:
+    Compute VAD on image signals of the target.
+    Args:
+        np.ndarray: Array of image signals we want to compute the VAD of. Time dimension is the last (2nd) one.
+
+    Returns:
+        np.ndarray: Array of VADs. One per input row.
     """
     vads = np.zeros(x.shape)
     for i_m in range(vads.shape[0]):
@@ -124,29 +139,20 @@ def get_convolved_vads(x):
     return vads
 
 
-def get_target_vads(x_cnv, x_vad, h):
-    """
-    Compute VAD of image target signals with two methods. Output of each method are stacked along last axis.
-    :param x_cnv:       Image signals (n_mic x time)
-    :param x_vad:       VAD of source signal
-    :param h:           RIRs (n_mics x time)
-    :return:
-    """
-    target_image_vads = delay_vads(x_vad, h)
-    target_cnv_vads = get_convolved_vads(x_cnv)
-    target_vads = np.stack((target_image_vads, target_cnv_vads), axis=2)
-
-    return target_vads
-
-
 def reverb_other_noises(room, signal_setup, dset='train'):
     """
     Reverb other types of noises with the RIR already created of room. This enables to have for one source position
     several signals.
     We assume that the first source is the target source and that all other sources are noise sources.
-    :param room:            Instance of pra.room with RIRs and source signals
-    :param signal_setup:    Instance of SignalSetup with noise types and the function to get them
-    :return:
+    Args:
+        pra instance:   Instance of pra.room with RIRs and source signals
+        signal_setup:   Instance of SignalSetup with noise types and the function to get them
+
+    Returns:
+        np.ndarray: dry noises (n_noise_sources x noise_types x time)
+        np.ndarray: reverberated noises (n_noise_sources x noise_types x n_mic x time)
+        list:       list of noise files that were picked (n_noise_sources x noise_types)
+        list:       list of the index corresponding to the starting sample in the file that was picked
     """
     h = room.rir
     n_rir = np.shape(h)[0]
@@ -158,11 +164,6 @@ def reverb_other_noises(room, signal_setup, dset='train'):
         len_max = int((signal_setup.duration_range[-1] + 1) * room.fs)
     else:
         len_max = len(room.image_vad[0])
-    # Preallocate reverbed signals; See pra.room to get length of reverbed signals
-    # n_samp = np.max([np.max([len(h_) for h_ in np.array(h)[:, j]]) for j in range(n_noise_sources + 1)])
-    # len_x_out = len(room.sources[0].signal) + n_samp - 1
-    # if len_x_out % 2 == 1:      # See pra.room.py line 1066
-    #     len_x_out += 1
 
     source_noises = np.zeros((n_noise_sources, n_noi, len(room.sources[0].signal)))
     reverbed_noises = np.zeros((n_noise_sources, n_noi, n_rir, len_max))
@@ -195,14 +196,15 @@ def snr_at_mics(s, n, mics_per_node, fs=16000, vad_s=None, vad_n=None):
     Compute the SNR at each microphone and return them. Also return the minimal difference and the maximal difference
     between all nodes.
     SNR at one node is computed as the mean of the SNRs at the microphones of the node.
-    :param s:               Array of target image signals in shape n_mics x time
-    :param n:               Array of noise image signals in shape n_mics x time
-    :param fs:              Sampling frequency of signals s and n.
-    :param mics_per_node:   Number of mics per node
-    :param vad_s            VAD of signal s. If mentioned, it will be applied on s before computing its variance
-    :param vad_n            VAD of signal n. If mentioned, it will be applied on n before computing its variance
+    Args:
+        np.ndarray: Array of target image signals in shape n_mics x time
+        np.ndarray: Array of noise image signals in shape n_mics x time
+        int:        Sampling frequency of signals s and n.
+        np.ndarray: Number of mics per node (1D)
+        np.ndarray: VAD of signal s. If mentioned, it will be applied on s before computing its variance
+        np.ndarray: VAD of signal n. If mentioned, it will be applied on n before computing its variance
 
-    :return:
+    Returns:
         - snrs:             SNRs at all mics
         - node_snrs:        SNR at all nodes (as mean of SNRs of mics of the node)
         - delta_snr_min:    Minimal difference between all nodes
@@ -239,11 +241,16 @@ def simulate_room(room_setup, signal_setup, noise_types, i_target_file, dset):
     """
     Simulate the RIRs of a room with two or more noise sources.
     We assume that there is only one target source and that all others are noise.
-    :param room_setup:
-    :param signal_setup:
-    :param noise_types:     Noise types; one per noise source
-    :param i_target_file:
-    :return:
+    Args:
+        pra instance:   Pyroomacoustics instance of the room to simulate.
+        signal_setup:   Class instance of SignalSetup
+        list:           List of the noise types (one per noise source)
+        int:            Index of the target file to load
+
+    Returns:
+        Either  - "redraw_source_signal": no adequate target signal could be found
+                - "redraw_room_setup":  no adequate room configuration could be found
+                - room instance, reverberated signals, target VADs, SNRs
     """
     if len(noise_types) != room_setup.n_sources - 1 or len(noise_types) != len(signal_setup.source_snr):
         raise ValueError('The number of noise types should be equal to the number of noise sources')
@@ -302,16 +309,14 @@ def save_data(sources, images, noises, infos, id, path, fs=16000):
     """
     We only save the signals we might use. So in meeting scenario, SSN is saved for all
     sources but interferent talker only for second source and freesound only for third source.
-    :param sources:     Source images of target and noise (noise is only SSN)
-    :param images:      Image signals of target and noise (noise is SSN)
-    :param noises:      Concatenation of source and image noises that are not SSN
-    :param infos:       Dictionary of informations to save (room and signal setups)
-    :param path:        Root path where data is saved
-    :param id:          id of RIR
-    :param fs:          Sampling frequency
-
-    NOTA BENE:      This function is quite specialized to the 'living' and 'meeting' scenarios. It might (will) crash
-                    if n_sources != 3 in random room configuration
+    Args:
+        np.ndarray: Source images of target and noise (noise is only SSN)
+        np.ndarray: Image signals of target and noise (noise is SSN)
+        np.ndarray: Concatenation of source and image noises that are not SSN
+        dict:       Dictionary of informations to save (room and signal setups)
+        str:        Root path where data is saved
+        int:        id of RIR
+        int:        Sampling frequency  [16000]
     """
     path_wav = os.path.join(path, 'wav', '')
     path_log = os.path.join(path, 'log', '')
@@ -416,7 +421,7 @@ if __name__ == "__main__":
         d_mw = 0.5                  # Maximal distance of mics to closest wall (mics are close to wall in LivingRoom)
         n_sources = 2
         z_range_m = [0.7, 0.95]     # coffe table - dresser
-        z_range_s = [1.20, 1.90]    # Sitting person - tall standing person
+        z_range_s = [1.20, 2]    # Sitting person - tall standing person
         room_setup = LivingRoomSetup(l_range=l_range, w_range=w_range, h_range=h_range, beta_range=beta_range,
                                      n_sensors_per_node=n_sensors_per_node,
                                      d_mw=d_mw, d_mn=d_mn, d_nn=d_nn, z_range_m=z_range_m,
