@@ -156,7 +156,6 @@ def reverb_other_noises(room, signal_setup, dset='train'):
     """
     h = room.rir
     n_rir = np.shape(h)[0]
-    n_noise_sources = np.shape(h)[1] - 1    # First RIRs are target -> Do not count them
     n_noi = len(signal_setup.noises_dict.keys())
 
     target_duration = len(room.sources[0].signal) / room.fs
@@ -165,28 +164,27 @@ def reverb_other_noises(room, signal_setup, dset='train'):
     else:
         len_max = len(room.image_vad[0])
 
-    source_noises = np.zeros((n_noise_sources, n_noi, len(room.sources[0].signal)))
-    reverbed_noises = np.zeros((n_noise_sources, n_noi, n_rir, len_max))
-    noise_files, noise_starts = [[] for _ in range(n_sources)], np.zeros((n_noise_sources, n_noi))
+    source_noises = np.zeros((n_noi, len(room.sources[0].signal)))
+    reverbed_noises = np.zeros((n_noi, n_rir, len_max))
+    noise_files, noise_starts = [], np.zeros(n_noi)
 
     # Convolve all noises with all RIRs
-    for i_sou in range(n_noise_sources):
-        for i_noi, noise_name in enumerate(signal_setup.noises_dict.keys()):
-            noise_segment_ok = False
-            while not noise_segment_ok:     # Some noises are so narrow-band that SNR is biased
-                n, n_file, n_file_start, vad_noise, fs = signal_setup.get_noise_segment(noise_name, target_duration)
-                n = increase_to_snr(room.sources[0].signal, n, signal_setup.source_snr[i_sou],
-                                    weight=True, vad_tar=room.source_vad, vad_noi=vad_noise, fs=fs)
-                snr_check = fw_snr(room.sources[0].signal, n, fs,
-                                   vad_tar=room.source_vad, vad_noi=vad_noise, clipping=True)[1]
-                noise_segment_ok = (abs(snr_check - signal_setup.source_snr[i_sou]) < 1)
-            source_noises[i_sou, i_noi, :len(n)] = n
-            for i_rir in range(n_rir):
-                n_reverbed = np.convolve(n, room.rir[i_rir][i_sou + 1])
-                n_reverbed = n_reverbed[:len_max]
-                reverbed_noises[i_sou, i_noi, i_rir, :len(n_reverbed)] = n_reverbed
-            noise_files[i_sou].append(n_file)
-            noise_starts[i_sou, i_noi] = n_file_start
+    for i_noi, noise_name in enumerate(signal_setup.noises_dict.keys()):
+        noise_segment_ok = False
+        while not noise_segment_ok:     # Some noises are so narrow-band that SNR is biased
+            n, n_file, n_file_start, vad_noise, fs = signal_setup.get_noise_segment(noise_name, target_duration)
+            n = increase_to_snr(room.sources[0].signal, n, signal_setup.source_snr[0],
+                                weight=True, vad_tar=room.source_vad, vad_noi=vad_noise, fs=fs)
+            snr_check = fw_snr(room.sources[0].signal, n, fs,
+                               vad_tar=room.source_vad, vad_noi=vad_noise, clipping=True)[1]
+            noise_segment_ok = (abs(snr_check - signal_setup.source_snr[0]) < 1)    # Check deltaSNR < 1 dB
+        source_noises[i_noi, :len(n)] = n
+        for i_rir in range(n_rir):
+            n_reverbed = np.convolve(n, room.rir[i_rir][1])
+            n_reverbed = n_reverbed[:len_max]
+            reverbed_noises[i_noi, i_rir, :len(n_reverbed)] = n_reverbed
+        noise_files.append(n_file)
+        noise_starts[i_noi] = n_file_start
 
     return source_noises, reverbed_noises, noise_files, noise_starts
 
@@ -274,13 +272,12 @@ def simulate_room(room_setup, signal_setup, noise_types, i_target_file, dset):
     room.add_source(room_setup.source_positions[0], signal=target_source_signal)
     room.source_vad = target_source_vad
     # Second source (first noise source)
-    for i_source, noise_type in enumerate(noise_types):
-        noise_source_signal, _, _, noise_vad, _ = signal_setup.get_noise_segment(n_type=noise_type,
-                                                                                 duration=signal_setup.target_duration)
-        noise_source_signal = increase_to_snr(target_source_signal, noise_source_signal,
-                                              signal_setup.source_snr[i_source],
-                                              weight=True, vad_tar=target_source_vad, vad_noi=noise_vad, fs=fs)
-        room.add_source(room_setup.source_positions[i_source + 1], signal=noise_source_signal)
+    noise_source_signal, _, _, noise_vad, _ = signal_setup.get_noise_segment(n_type="SSN",
+                                                                             duration=signal_setup.target_duration)
+    noise_source_signal = increase_to_snr(target_source_signal, noise_source_signal,
+                                          signal_setup.source_snr[0],
+                                          weight=True, vad_tar=target_source_vad, vad_noi=noise_vad, fs=fs)
+    room.add_source(room_setup.source_positions[1], signal=noise_source_signal)
 
     # Reverb signals, mix them
     image_signals, noisy_reverbed_signals, rirs = mix_signals(room)
@@ -318,24 +315,20 @@ def save_data(sources, images, noises, infos, id, path, fs=16000):
         int:        id of RIR
         int:        Sampling frequency  [16000]
     """
-    path_wav = os.path.join(path, 'wav', '')
-    path_log = os.path.join(path, 'log', '')
+    path_wav = os.path.join(path, 'wav_original', '')
+    path_log = os.path.join(path, 'log', 'infos', '')
 
     # Save source signals
-    if 'living/' in path:
-        dirs = ['target', 'noise']
-        sig_names = ['', '_ssn', '_fs']
-    else:
-        dirs = ['target', 'noise', 'noise']
-        sig_names = ['', '_ssn', '_ssn', '_it', '_fs']
-    # Save source target and SSN (3 sources)
+    dirs = ['target', 'noise']
+    sig_names = ['', '_ssn', '_it', '_fs']
+    # Save source target and SSN (2 sources)
     for i_s in range(len(sources)):
         path_source = os.path.join(path_wav, 'dry', dirs[i_s], "")
         sf.write(path_source + str(id) + '_S-' + str(i_s + 1) + sig_names[i_s] + '.wav', sources[i_s].signal, fs)
-    # Save the other noises source signals
+    # Save the other noises source signals (one noise source, two extra noises: interferent speaker and freesound)
     for i_sn in range(len(noises[0])):
-        sf.write(path_source + str(id) + '_S-' + str(i_sn + 2) + sig_names[i_sn + len(sources)] + '.wav',
-                 noises[0][i_sn][i_sn], fs)
+        sf.write(path_source + str(id) + '_S-2' + sig_names[i_sn + len(sources)] + '.wav',
+                 noises[0][i_sn, :], fs)
     # Save the images of target and SSN
     for i_s in range(len(images)):
         path_image = os.path.join(path_wav, 'cnv', dirs[i_s], "")
@@ -344,10 +337,10 @@ def save_data(sources, images, noises, infos, id, path, fs=16000):
                      images[i_s][i_ch], fs)
     # Save the other noise images
     for i_s in range(len(noises[1])):
-        for i_ch in range(len(noises[1][i_s][i_s])):
-            sf.write(path_image + str(id) + '_S-' + str(i_s + 2) + sig_names[i_s + len(sources)] +
+        for i_ch in range(noises[1][i_s].shape[0]):
+            sf.write(path_image + str(id) + '_S-2' + sig_names[i_s + len(sources)] +
                      '_Ch-' + str(i_ch + 1) + '.wav',
-                     noises[1][i_s][i_s][i_ch], fs)
+                     noises[1][i_s, i_ch, :], fs)
 
     # Save infos
     np.save(path_log + str(id), infos, allow_pickle=True)
@@ -388,25 +381,24 @@ if __name__ == "__main__":
     path_to_librispeech = '../../../../corpus/LibriSpeech/'
 
     # %% DEFAULT ROOM PARAMETERS
-    l_range, w_range, h_range, beta_range = [3, 8], [3, 5], [2.5, 3], [0.3, 0.6]
+    l_range, w_range, h_range, beta_range = (3, 8), (3, 5), (2.5, 3), (0.3, 0.6)
     n_sensors_per_node = [4, 4, 4, 4]  # Should be constant in all nodes, because of pra.add_microphone_array(micArray)
     d_mw, d_mn, d_nn, d_rnd_mics = 0.5, 0.05, 0.5, 1
-    n_sources = 3
-    d_ss, d_sn, d_sw = 0.5, 0.5, 0.15
-    z_range_m = [0.7, 2]
-    z_range_s = [1.20, 2]
+    n_sources = 2
+    d_ss, d_sn, d_sw = 0.5, 0.5, 0.5
+    z_range_m = (0.7, 2)
+    z_range_s = (1.20, 2)
 
     r_range, d_nt_range, d_st_range, phi_ss_range = (0.5, 1), (0.05, 0.20), (0, 0.50), (np.pi / 8, 15 * np.pi / 8)
     # %% JOB PROPERTIES
     rir_stop = int(i_rir + n_rir - 1)
-    i_file = (i_rir - 1) * 2     # Pick different ta508gglker for every RIR -- leave margin for cases +=1
+    i_file = (i_rir - 1) * 2     # Pick different talker for every RIR -- leave margin for cases +=1
 
     create_directories(root_dir, scenario, dset)       # Create dirs and return root to wav/
 
     # Instantiate the room and signal classes
     if scenario == 'meeting':
         d_mw = 0.5                      # Minimal distance of all mics to the closest wall
-        n_sources = 3
         z_range_m = [0.7, 0.8]          # Table
         z_range_s = [1.15, 1.30]        # Sitting people
         room_setup = MeetingRoomSetup(l_range=l_range, w_range=w_range, h_range=h_range, beta_range=beta_range,
@@ -419,7 +411,6 @@ if __name__ == "__main__":
                                       phi_ss_range=phi_ss_range)
     elif scenario == 'living':
         d_mw = 0.5                  # Maximal distance of mics to closest wall (mics are close to wall in LivingRoom)
-        n_sources = 2
         z_range_m = [0.7, 0.95]     # coffe table - dresser
         z_range_s = [1.20, 2]    # Sitting person - tall standing person
         room_setup = LivingRoomSetup(l_range=l_range, w_range=w_range, h_range=h_range, beta_range=beta_range,
@@ -437,20 +428,13 @@ if __name__ == "__main__":
     # %% SIGNAL PARAMETERS
     duration_range = (5, 10)
     var_tar = db2lin(-23)
-    if scenario == 'meeting':                               # Two noise sources in meeting
-        snr_dry_range = np.array([[-3, 6],                  # First noise source is interferent talker
-                                 [0, 10]])                  # Second noise source in far field noise
-        noise_types = ['SSN', 'SSN']
-    elif scenario == 'living':                              # Single noise source
-        snr_dry_range = np.array([-6, 6])[np.newaxis, :]    # For compatibility in SignalSetup.get_random_source_snr()
-        noise_types = ['SSN']
-    else:
-        snr_dry_range = np.tile((-6, 6), (n_sources - 1, 1))
-        noise_types = np.tile('SSN', n_sources - 1)
+    noise_types = ['SSN']
+    snr_dry_range = np.array([[0, 0]])
     snr_cnv_range = (-10, 15)
     min_delta_snr = 0
 
     target_list, talkers_list, noise_dict = get_wavs_list(path_to_freesound, path_to_librispeech, dset, scenario)
+    np.random.seed(i_rir)   # Now that the target lists are the same, do not pick the same noise for different RIR
     signal_setup = SignalSetup(target_list, talkers_list, noise_dict, duration_range, var_tar, snr_dry_range,
                                snr_cnv_range, min_delta_snr)
 
@@ -458,7 +442,7 @@ if __name__ == "__main__":
     save_path = os.path.join(root_dir, scenario, dset)
     while i_rir <= rir_stop:
         print('Simulate room {}'.format(str(i_rir)))
-        if not os.path.isfile(os.path.join(save_path, 'log', '') + str(i_rir) + '.npy'):
+        if not os.path.isfile(os.path.join(save_path, 'log', 'infos', '') + str(i_rir) + '.npy'):
             # Create a room configuration with sources and microphones placed in it
             room_setup.create_room_setup()
             # Convolve the target signal i_file in the room and mix it with SSN noise
@@ -477,23 +461,15 @@ if __name__ == "__main__":
             noises = [noise_sources, noise_images]
 
             # Save the data
-            if scenario == 'living':
-                infos = {'rirs': room.rir,
-                         'target': signal_setup.target_list[i_file].split('/')[-1].strip('.flac'),
-                         'noise': {'freesound': {'file': noise_files[0][0], 'start': noise_starts[0][0]}},
-                         'mics': room_setup.microphones_positions,
-                         'room': {'length': room_setup.length, 'width': room_setup.width, 'height': room_setup.height,
-                                  'alpha': room_setup.alpha},
-                         'sources': room_setup.source_positions}
-            else:
-                infos = {'rirs': room.rir,
-                         'target': signal_setup.target_list[i_file].split('/')[-1].strip('.flac'),
-                         'noise': {'freesound': {'file': noise_files[1][1], 'start': noise_starts[1][1]},
-                                   'interferent_talker': {'file': noise_files[0][0], 'start': noise_starts[0][0]}},
-                         'mics': room_setup.microphones_positions,
-                         'room': {'length': room_setup.length, 'width': room_setup.width, 'height': room_setup.height,
-                                  'alpha': room_setup.alpha},
-                         'sources': room_setup.source_positions}
+            infos = {'rirs': room.rir,
+                     'target': signal_setup.target_list[i_file].split('/')[-1].strip('.flac'),
+                     'noise': {'ssn': None,
+                               'interferent_talker': {'file': noise_files[0], 'start': noise_starts[0]},
+                               'freesound': {'file': noise_files[1], 'start': noise_starts[1]}},
+                     'mics': room_setup.microphones_positions,
+                     'room': {'length': room_setup.length, 'width': room_setup.width, 'height': room_setup.height,
+                              'alpha': room_setup.alpha},
+                     'sources': room_setup.source_positions}
 
             save_data(room.sources, images, noises, infos, i_rir, save_path)
             i_file += 1
