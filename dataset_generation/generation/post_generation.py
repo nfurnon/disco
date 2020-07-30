@@ -1,7 +1,7 @@
 import argparse
-from suma_classes import PostProcessor
+from disco_theque.dataset_utils.post_generator import PostGenerator
 
-path_dataset = '/home/nfurnon/dataset/suma/'
+path_dataset = 'tmp/'
 snr_range = [0, 6]
 SAVE_TAR = True
 
@@ -29,5 +29,5 @@ if __name__ == '__main__':
     rir_start, nb_rir = args.rirs
     scene = args.scene
     noise = args.noise
-    pp = PostProcessor(rir_start, nb_rir, scene, noise, snr_range, path_dataset, save_target=SAVE_TAR)
+    pp = PostGenerator(rir_start, nb_rir, scene, noise, snr_range, path_dataset, save_target=SAVE_TAR)
     pp.post_process()

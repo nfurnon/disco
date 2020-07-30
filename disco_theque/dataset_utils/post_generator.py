@@ -3,7 +3,6 @@ import glob
 import numpy as np
 import soundfile as sf
 from disco_theque.sigproc_utils import tf_mask
-from disco_theque.sigproc_utils import fw_snr
 import librosa as lb
 
 
@@ -33,7 +32,6 @@ class PostGenerator:
         """
         self.rir_start = rir_start
         self.nb_rir = nb_rir
-        self.case = self.get_dset()
         self.save_target = save_target  # Useless to overwrite the same signal
         self.scene = scene
         n_noises = 1
@@ -44,12 +42,13 @@ class PostGenerator:
         self.n_fft = n_fft
         self.n_hop = n_hop
         self.mask_type = mask_type
+        self.snr_dir = self.get_directory_name()
         if n_samples is not None:
             n_train, n_val, n_test = n_samples
         else:
             n_train, n_val, n_test = 10000, 1000, 1000
         self.n_samples = np.cumsum([n_train, n_val, n_test])
-        self.snr_dir = self.get_directory_name()
+        self.case = self.get_dset()
         # HARD-CODED PARAMETERS
         self.fs = 16000
         self.ch_per_node = [4, 4, 4, 4]

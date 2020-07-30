@@ -20,20 +20,26 @@ def create_directories(output_path, scene, case):
         str: living/meeting/random   Name of the first subdirectory relative to the scenario
         str: test/train/val
     """
-    os.makedirs(os.path.join(output_path, scene, case, 'log'), exist_ok=True)
-    os.makedirs(os.path.join(output_path, scene, case, 'wav'), exist_ok=True)
-    os.makedirs(os.path.join(output_path, scene, case, 'wav', 'dry'), exist_ok=True)
-    os.makedirs(os.path.join(output_path, scene, case, 'wav', 'dry', 'target'), exist_ok=True)
-    os.makedirs(os.path.join(output_path, scene, case, 'wav', 'dry', 'noise'), exist_ok=True)
-    os.makedirs(os.path.join(output_path, scene, case, 'wav', 'cnv'), exist_ok=True)
-    os.makedirs(os.path.join(output_path, scene, case, 'wav', 'cnv', 'target'), exist_ok=True)
-    os.makedirs(os.path.join(output_path, scene, case, 'wav', 'cnv', 'noise'), exist_ok=True)
+    os.makedirs(os.path.join(output_path, scene, case, 'log', 'infos'), exist_ok=True)
+    os.makedirs(os.path.join(output_path, scene, case, 'wav_original'), exist_ok=True)
+    os.makedirs(os.path.join(output_path, scene, case, 'wav_original', 'dry'), exist_ok=True)
+    os.makedirs(os.path.join(output_path, scene, case, 'wav_original', 'dry', 'target'), exist_ok=True)
+    os.makedirs(os.path.join(output_path, scene, case, 'wav_original', 'dry', 'noise'), exist_ok=True)
+    os.makedirs(os.path.join(output_path, scene, case, 'wav_original', 'cnv'), exist_ok=True)
+    os.makedirs(os.path.join(output_path, scene, case, 'wav_original', 'cnv', 'target'), exist_ok=True)
+    os.makedirs(os.path.join(output_path, scene, case, 'wav_original', 'cnv', 'noise'), exist_ok=True)
 
 
 def get_wavs_list(path_to_freesound, path_to_librispeech, case, scene):
     """
     Return lists of wavs for the target and noise signals, as well as a list of speakers which one can pick from to
     compute a SSN noise.
+
+    .. note:: If this script is to be run in parallel processes, one has to make sure that the same target file will not
+    be selected by two processes. That's why the random seed is set at the header of the script, and the shuffling here
+    shuffles the list in the exact same way for all processes. However, the noises are randomly selected, so this seed
+    should be later changed, which is done in the `__main__` function.
+
     Args:
         str: path of freesound folder (before train/test/val)
         str: path of LibriSpeech folder (before train-clean-360)
@@ -45,21 +51,30 @@ def get_wavs_list(path_to_freesound, path_to_librispeech, case, scene):
         list:   list of the LibriSpeech interferent speech files
         dict:   dictionnary of {noise_type: noise_list}
     """
-    fs_list = glob.glob(os.path.join(path_to_freesound, case) + '/*/*.wav')
-    if case == 'test':
-        target_list = glob.glob(os.path.join(path_to_librispeech, 'test-clean', '') + '*/*/*.flac')
-        talkers_list = glob.glob(os.path.join(path_to_librispeech, 'train-clean-360', '') + '[89]**/*/*.flac')
-    elif case == 'train':
-        target_list = glob.glob(os.path.join(path_to_librispeech, 'train-clean-100', '') + '*/*/*.flac')
-        talkers_list = glob.glob(os.path.join(path_to_librispeech, 'train-clean-360', '') + '[1234567]**/*/*.flac')
+    #TODO: remove this if
+    if os.path.isfile('tmp/lists/talker_list.npy'):
+        talkers_list = np.load('tmp/lists/talker_list.npy')
+        target_list = np.load('tmp/lists/target_list.npy')
     else:
-        raise ValueError('`case` should be "test" or "train"')
-    target_list.sort()
-    np.random.shuffle(target_list)       # Force to shuffle identically for all parallel processes (so set numpy.seed)
-    talkers_list.sort()
-    np.random.shuffle(talkers_list)
+        if case == 'test':
+            target_list = glob.glob(os.path.join(path_to_librispeech, 'test-clean', '') + '*/*/*.flac')
+            talkers_list = glob.glob(os.path.join(path_to_librispeech, 'train-clean-360', '') + '[89]**/*/*.flac')
+        elif case == 'train':
+            target_list = glob.glob(os.path.join(path_to_librispeech, 'train-clean-100', '') + '*/*/*.flac')
+            talkers_list = glob.glob(os.path.join(path_to_librispeech, 'train-clean-360', '') + '[1234567]**/*/*.flac')
+        else:
+            raise ValueError('`case` should be "test" or "train"')
+        target_list.sort()
+        np.random.shuffle(target_list)       # Force to shuffle identically for all parallel processes (so set numpy.seed)
+        talkers_list.sort()
+        np.random.shuffle(talkers_list)
+
+        np.save('tmp/lists/target_list', target_list)
+        np.save('tmp/lists/talker_list', talkers_list)
+    fs_list = glob.glob(os.path.join(path_to_freesound, case) + '/*/*.wav')
     fs_list.sort()
     if scene == 'living':   # One noise source; one extra noise type (additionnally to SSN)
+
         noises_dict = {'freesound': fs_list}
     else:      # Interferent talker is desired
         noises_dict = {'interferent_talker': talkers_list, 'freesound': fs_list}
@@ -143,7 +158,7 @@ def reverb_other_noises(room, signal_setup, dset='train'):
     """
     Reverb other types of noises with the RIR already created of room. This enables to have for one source position
     several signals.
-    We assume that the first source is the target source and that all other sources are noise sources.
+    We assume that the first source is the target source and that the second is the noise source.
     Args:
         pra instance:   Instance of pra.room with RIRs and source signals
         signal_setup:   Instance of SignalSetup with noise types and the function to get them
@@ -159,7 +174,7 @@ def reverb_other_noises(room, signal_setup, dset='train'):
     n_noi = len(signal_setup.noises_dict.keys())
 
     target_duration = len(room.sources[0].signal) / room.fs
-    if dset == 'train':
+    if dset in ['train', 'val']:
         len_max = int((signal_setup.duration_range[-1] + 1) * room.fs)
     else:
         len_max = len(room.image_vad[0])
@@ -170,6 +185,7 @@ def reverb_other_noises(room, signal_setup, dset='train'):
 
     # Convolve all noises with all RIRs
     for i_noi, noise_name in enumerate(signal_setup.noises_dict.keys()):
+        # Select the noise
         noise_segment_ok = False
         while not noise_segment_ok:     # Some noises are so narrow-band that SNR is biased
             n, n_file, n_file_start, vad_noise, fs = signal_setup.get_noise_segment(noise_name, target_duration)
@@ -179,6 +195,7 @@ def reverb_other_noises(room, signal_setup, dset='train'):
                                vad_tar=room.source_vad, vad_noi=vad_noise, clipping=True)[1]
             noise_segment_ok = (abs(snr_check - signal_setup.source_snr[0]) < 1)    # Check deltaSNR < 1 dB
         source_noises[i_noi, :len(n)] = n
+        # Convolve the noise signal
         for i_rir in range(n_rir):
             n_reverbed = np.convolve(n, room.rir[i_rir][1])
             n_reverbed = n_reverbed[:len_max]
@@ -237,13 +254,15 @@ def snr_at_mics(s, n, mics_per_node, fs=16000, vad_s=None, vad_n=None):
 
 def simulate_room(room_setup, signal_setup, noise_types, i_target_file, dset):
     """
-    Simulate the RIRs of a room with two or more noise sources.
-    We assume that there is only one target source and that all others are noise.
+    Simulate the RIRs of a room with two sources (one target source and one noise source).
+    Several noise types (SSN, freesound, interferent talker) can be played by the noise source. In this function, we
+    only simulate the SSN noise, and reverberate the other noises in `reverb_other_noises`.
     Args:
-        pra instance:   Pyroomacoustics instance of the room to simulate.
-        signal_setup:   Class instance of SignalSetup
-        list:           List of the noise types (one per noise source)
-        int:            Index of the target file to load
+        room_setup (pra instance): Pyroomacoustics instance of the room to simulate.
+        signal_setup: Class instance of SignalSetup
+        noise_types (list): List of the noise types (one per noise source)
+        i_target_file (int): Index of the target file to load
+        dset (str): train/val/test
 
     Returns:
         Either  - "redraw_source_signal": no adequate target signal could be found
@@ -279,9 +298,9 @@ def simulate_room(room_setup, signal_setup, noise_types, i_target_file, dset):
                                           weight=True, vad_tar=target_source_vad, vad_noi=noise_vad, fs=fs)
     room.add_source(room_setup.source_positions[1], signal=noise_source_signal)
 
-    # Reverb signals, mix them
+    # Reverberate signals, mix them
     image_signals, noisy_reverbed_signals, rirs = mix_signals(room)
-    # VAD of reverbed signal; better when computed on reverbed signal rather than shifting the source VAD
+    # VAD of reverbed signal; better when computed on reverberated signal rather than shifting the source VAD
     target_image_vad = get_convolved_vads(image_signals[0])
     room.image_vad = target_image_vad
 
@@ -347,6 +366,7 @@ def save_data(sources, images, noises, infos, id, path, fs=16000):
 
 
 if __name__ == "__main__":
+    np.random.seed(30)
     parser = argparse.ArgumentParser()
     parser.add_argument('--dset',
                         help='train/test dataset',
@@ -358,23 +378,19 @@ if __name__ == "__main__":
                         choices=['random', 'living', 'meeting'],
                         type=str,
                         default='random')
-    parser.add_argument('--rir_id', '-i',
-                        help='ID of the RIR to create',
+    parser.add_argument('--rir_id', '-r',
+                        help='ID of the first RIR to create and number of RIRs to create.',
+                        nargs=2,
                         type=int,
-                        default=1)
-    parser.add_argument('--rir_nb', '-n',
-                        help='RIRs to create',
-                        type=int,
-                        default=1)
+                        default=[1, 1])
     parser.add_argument('--dir_out', '-d',
                         help='directory where data will be saved',
                         type=str,
-                        default='/tmp')
+                        default='tmp')
     args = parser.parse_args()
     dset = args.dset
     scenario = args.scenario
-    i_rir = args.rir_id
-    n_rir = args.rir_nb
+    i_rir, n_rir = args.rir_id
     root_dir = args.dir_out
 
     path_to_freesound = '../../../../dataset/freesound/data/'
@@ -392,13 +408,12 @@ if __name__ == "__main__":
     r_range, d_nt_range, d_st_range, phi_ss_range = (0.5, 1), (0.05, 0.20), (0, 0.50), (np.pi / 8, 15 * np.pi / 8)
     # %% JOB PROPERTIES
     rir_stop = int(i_rir + n_rir - 1)
-    i_file = (i_rir - 1) * 2     # Pick different talker for every RIR -- leave margin for cases +=1
+    i_file = (i_rir - 1) * 2  # Pick different talker for every RIR -- leave margin for cases +=1
 
     create_directories(root_dir, scenario, dset)       # Create dirs and return root to wav/
 
     # Instantiate the room and signal classes
     if scenario == 'meeting':
-        d_mw = 0.5                      # Minimal distance of all mics to the closest wall
         z_range_m = [0.7, 0.8]          # Table
         z_range_s = [1.15, 1.30]        # Sitting people
         room_setup = MeetingRoomSetup(l_range=l_range, w_range=w_range, h_range=h_range, beta_range=beta_range,
@@ -410,7 +425,6 @@ if __name__ == "__main__":
                                       d_nt_range=d_nt_range, d_st_range=d_st_range,
                                       phi_ss_range=phi_ss_range)
     elif scenario == 'living':
-        d_mw = 0.5                  # Maximal distance of mics to closest wall (mics are close to wall in LivingRoom)
         z_range_m = [0.7, 0.95]     # coffe table - dresser
         z_range_s = [1.20, 2]    # Sitting person - tall standing person
         room_setup = LivingRoomSetup(l_range=l_range, w_range=w_range, h_range=h_range, beta_range=beta_range,
@@ -434,7 +448,7 @@ if __name__ == "__main__":
     min_delta_snr = 0
 
     target_list, talkers_list, noise_dict = get_wavs_list(path_to_freesound, path_to_librispeech, dset, scenario)
-    np.random.seed(i_rir)   # Now that the target lists are the same, do not pick the same noise for different RIR
+    np.random.seed(i_file)  # Don't pick the same noise for different RIR. Do it after speech lists are equally shuffled
     signal_setup = SignalSetup(target_list, talkers_list, noise_dict, duration_range, var_tar, snr_dry_range,
                                snr_cnv_range, min_delta_snr)
 
@@ -442,39 +456,34 @@ if __name__ == "__main__":
     save_path = os.path.join(root_dir, scenario, dset)
     while i_rir <= rir_stop:
         print('Simulate room {}'.format(str(i_rir)))
-        if not os.path.isfile(os.path.join(save_path, 'log', 'infos', '') + str(i_rir) + '.npy'):
-            # Create a room configuration with sources and microphones placed in it
-            room_setup.create_room_setup()
-            # Convolve the target signal i_file in the room and mix it with SSN noise
-            function_output = simulate_room(room_setup, signal_setup, noise_types, i_file, dset)
-            if function_output == "redraw_source_signal":
-                i_file += 1
-                print('redraw a target source signal')
-                continue
-            elif function_output == "redraw_room_setup":
-                print('Redraw a room configuration')
-                continue
-            # This is reached only if simulate_room was successful
-            room, images, image_target_vad, snr_images = function_output
-            # Simulate the same room but with the other noise types at each noise source
-            noise_sources, noise_images, noise_files, noise_starts = reverb_other_noises(room, signal_setup, dset)
-            noises = [noise_sources, noise_images]
-
-            # Save the data
-            infos = {'rirs': room.rir,
-                     'target': signal_setup.target_list[i_file].split('/')[-1].strip('.flac'),
-                     'noise': {'ssn': None,
-                               'interferent_talker': {'file': noise_files[0], 'start': noise_starts[0]},
-                               'freesound': {'file': noise_files[1], 'start': noise_starts[1]}},
-                     'mics': room_setup.microphones_positions,
-                     'room': {'length': room_setup.length, 'width': room_setup.width, 'height': room_setup.height,
-                              'alpha': room_setup.alpha},
-                     'sources': room_setup.source_positions}
-
-            save_data(room.sources, images, noises, infos, i_rir, save_path)
+        # Create a room configuration with sources and microphones placed in it
+        room_setup.create_room_setup()
+        # Convolve the target signal i_file in the room and mix it with SSN noise
+        function_output = simulate_room(room_setup, signal_setup, noise_types, i_file, dset)
+        if function_output == "redraw_source_signal":
             i_file += 1
-            i_rir += 1
+            print('\t Redraw a target source signal')
+            continue
+        elif function_output == "redraw_room_setup":
+            print('\t Redraw a room configuration')
+            continue
+        # This is reached only if simulate_room was successful
+        room, images, image_target_vad, snr_images = function_output
+        # Simulate the same room but with the other noise types at each noise source
+        noise_sources, noise_images, noise_files, noise_starts = reverb_other_noises(room, signal_setup, dset)
+        noises = [noise_sources, noise_images]
 
-        else:
-            i_rir += 1
+        # Save the data
+        infos = {'rirs': room.rir,
+                 'target': signal_setup.target_list[i_file].split('/')[-1].strip('.flac'),
+                 'noise': {'ssn': None,
+                           'interferent_talker': {'file': noise_files[0], 'start': noise_starts[0]},
+                           'freesound': {'file': noise_files[1], 'start': noise_starts[1]}},
+                 'mics': room_setup.microphones_positions,
+                 'room': {'length': room_setup.length, 'width': room_setup.width, 'height': room_setup.height,
+                          'alpha': room_setup.alpha},
+                 'sources': room_setup.source_positions}
 
+        save_data(room.sources, images, noises, infos, i_rir, save_path)
+        i_file += 1
+        i_rir += 1
