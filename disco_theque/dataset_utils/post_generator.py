@@ -12,10 +12,25 @@ class PostGenerator:
     Given the created dataset, post process it, which means:
      - mix target + noise at (random) SNR
      - create STFT
-    Save the STFT of the mixture and the corresponding mask
+     - compute corresponding mask
+     - Save the STFT of the mixture and the mask
     """
     def __init__(self, rir_start, nb_rir, scene, noise, snr_range, path_to_dataset,
-                 n_fft=512, n_hop=256, mask_type='irm1', norm_type='scale_to_1', save_target=True):
+                 n_fft=512, n_hop=256, mask_type='irm1', save_target=True, n_samples=None):
+        """
+        Args:
+            rir_start (int): ID of the first RIR to process
+            nb_rir (int): Number of RIRs to process
+            scene (str): Spatial configuration: 'random'/'living'/'meeting'
+            noise (str): Noise to mix
+            snr_range (list, tuple): SNR range of the desired mixture
+            path_to_dataset (str): root folder to dataset
+            n_fft (int): FFT length of STFT [512]
+            n_hop (int): FFT hop size of STFT [256]
+            mask_type (str): Type of ideal TF-mask ('irmX', 'iamX', 'ibmX') [irm1]
+            save_target (bool): Save the target signal ? (This signal is the same for all noises)
+            n_samples (list, array): In this order, number of samples for the train, val, test datasets.
+        """
         self.rir_start = rir_start
         self.nb_rir = nb_rir
         self.case = self.get_dset()
@@ -24,33 +39,41 @@ class PostGenerator:
         n_noises = 1
         self.noise = noise
         self.snr_range = np.array(snr_range)
-        if self.snr_range.ndim == 1:
-            self.snr_range = self.snr_range[np.newaxis, :]
         self.snr_out = np.zeros((nb_rir, n_noises))
         self.path_dataset = path_to_dataset
         self.n_fft = n_fft
         self.n_hop = n_hop
         self.mask_type = mask_type
-        # Second go
-        self.norm = norm_type
-        self.stats = self.get_db_stats()
+        if n_samples is not None:
+            n_train, n_val, n_test = n_samples
+        else:
+            n_train, n_val, n_test = 10000, 1000, 1000
+        self.n_samples = np.cumsum([n_train, n_val, n_test])
+        self.snr_dir = self.get_directory_name()
+        # HARD-CODED PARAMETERS
+        self.fs = 16000
+        self.ch_per_node = [4, 4, 4, 4]
+        self.n_ch = sum(self.ch_per_node)
+        self.n_nodes = len(self.ch_per_node)
 
     def get_dset(self):
-        """ Return train or test depending on RIR we are considering"""
-        assert 0 < self.rir_start < 12001, "rir ID should be between 1 and 12000"
-        assert self.rir_start + self.nb_rir <= 12001, "Expected number of RIR is too high (max RIR ID is 12000)"
-        assert not self.rir_start < 11001 < self.rir_start + self.nb_rir, "First and last RIR id are not part of the " \
-                                                                          "same set"
-        out = 'train' if self.rir_start < 11001 else 'test'
-        return out
+        """ Return train, val or test depending on RIR we are considering"""
+        assert 0 < self.rir_start < self.n_samples[-1], "rir should be between 1 and {}".format(str(self.n_samples[-1]))
+        assert self.rir_start + self.nb_rir < self.n_samples[np.where(self.rir_start < self.n_samples)[0][0]], \
+                                                                          "First and last RIRs do not belong to" \
+                                                                          "the same set."
+        return ['train', 'val', 'test'][np.where(self.rir_start < self.n_samples)[0][0]]
+
+    def get_directory_name(self):
+        """From snr_range in self, return the name of the directory in form of e.g. 0-6"""
+        return '{}-{}'.format(str(self.snr_range[0]), str(self.snr_range[1]))
 
     def post_process(self):
-        dirry = '_'.join(['{}-{}'.format(str(self.snr_range[k][0]), str(self.snr_range[k][1]))
-                          for k in range(len(self.snr_range))])  # e.g. '0-6_5-15' or '0-6'
+        """Mix signals at random SNR in self.snr_range; take STFT; compute mask; save data."""
         path_out = os.path.join(self.path_dataset, self.scene, self.case)
-        os.makedirs(os.path.join(path_out, 'log/snrs/dry', dirry), exist_ok=True)
+        os.makedirs(os.path.join(path_out, 'log', 'snrs', 'dry', self.snr_dir), exist_ok=True)
         for rir in range(self.rir_start, self.rir_start + self.nb_rir):
-            if not os.path.isfile(os.path.join(path_out, 'log/snrs/dry', dirry, '') +
+            if not os.path.isfile(os.path.join(path_out, 'log', 'snrs', 'dry', self.snr_dir, '') +
                                   '{}_{}.npy'.format(str(rir), self.noise)):
                 target_list, noise_list = self.get_sig_lists(rir)
                 tars, nois, mixs, snr_out = self.mix_sigs(target_list, noise_list)
@@ -77,23 +100,20 @@ class PostGenerator:
     def mix_sigs(self, tar_list, noi_list):
         """Load the signals in input lists, mix at random SNR in self.snr_range"""
         tar_segs, noi_segs, mix_segs = [], [], []
-        # Pick random SNR once for all channels
-        snrs = np.zeros(len(noi_list))
-        for i_noise in range(len(noi_list)):
-            snrs[i_noise] = self.snr_range[i_noise][0] + \
-                            (self.snr_range[i_noise][1] - self.snr_range[i_noise][0]) * np.random.random()
-        for ch in range(1, 17):
+        # Pick random SNR once for all channels and for all noises
+        snr = self.snr_range[0] + (self.snr_range[1] - self.snr_range[0]) * np.random.random()
+        for ch in range(1, self.n_ch + 1):
             tar_seg, _ = sf.read(tar_list[ch - 1], dtype='float32')
             noi_seg = np.zeros(len(tar_seg))
             for i_noise in range(len(noi_list)):
                 noi, _ = sf.read(noi_list[i_noise][ch - 1], dtype='float32')
-                noi_seg[:len(noi)] += noi * 10 ** (- snrs[i_noise] / 20)
+                noi_seg[:len(noi)] += noi * 10 ** (- snr / 20)
 
             tar_segs.append(tar_seg)
             noi_segs.append(noi_seg)
             mix_segs.append(tar_seg + noi_seg)
 
-        return np.array(tar_segs), np.array(noi_segs), np.array(mix_segs), snrs
+        return np.array(tar_segs), np.array(noi_segs), np.array(mix_segs), snr
 
     def array_stft(self, array):
         """Compute STFT of each signal in input array"""
@@ -113,52 +133,42 @@ class PostGenerator:
 
     def save_data(self, s, n, m, ss, ns, ms, masks, rir):
         """Save the data"""
-        fs = 16000
         # Create the destination folders
-        dirry = '_'.join(['{}-{}'.format(str(self.snr_range[k][0]), str(self.snr_range[k][1]))
-                        for k in range(len(self.snr_range))])   # e.g. '0-6_5-15' or '0-6'
         path_out = os.path.join(self.path_dataset, self.scene, self.case)
-        for folder in ['stft_processed/raw/', 'wav_processed']:
+        for folder in [os.path.join('stft_processed', 'raw', ''), 'wav_processed']:
             for subfolder in ['target', 'noise', 'mixture']:
-                os.makedirs(os.path.join(path_out, folder, dirry, subfolder), exist_ok=True)
-        os.makedirs(os.path.join(path_out, 'stft_processed', 'normed', 'abs', dirry, 'mixture'), exist_ok=True)
-        os.makedirs(os.path.join(path_out, 'mask_processed', dirry), exist_ok=True)
+                os.makedirs(os.path.join(path_out, folder, self.snr_dir, subfolder), exist_ok=True)
+        os.makedirs(os.path.join(path_out, 'stft_processed', 'normed', 'abs', self.snr_dir, 'mixture'), exist_ok=True)
+        os.makedirs(os.path.join(path_out, 'mask_processed', self.snr_dir), exist_ok=True)
         # Save the data
         for i in range(s.shape[0]):
             if self.save_target:
-                sf.write(os.path.join(path_out, 'wav_processed', dirry, 'target', '') +
-                         '{}_Ch-{}.wav'.format(str(rir), str(i + 1)), s[i], fs)
-            sf.write(os.path.join(path_out, 'wav_processed', dirry, 'noise', '') +
-                     '{}_{}_Ch-{}.wav'.format(str(rir), self.noise, str(i + 1)), n[i], fs)
-            sf.write(os.path.join(path_out, 'wav_processed', dirry, 'mixture', '') +
-                     '{}_{}_Ch-{}.wav'.format(str(rir), self.noise, str(i + 1)), m[i], fs)
+                sf.write(os.path.join(path_out, 'wav_processed', self.snr_dir, 'target', '') +
+                         '{}_Ch-{}.wav'.format(str(rir), str(i + 1)), s[i], self.fs)
+            sf.write(os.path.join(path_out, 'wav_processed', self.snr_dir, 'noise', '') +
+                     '{}_{}_Ch-{}.wav'.format(str(rir), self.noise, str(i + 1)), n[i], self.fs)
+            sf.write(os.path.join(path_out, 'wav_processed', self.snr_dir, 'mixture', '') +
+                     '{}_{}_Ch-{}.wav'.format(str(rir), self.noise, str(i + 1)), m[i], self.fs)
             # STFTs
             if self.save_target:
-                np.save(os.path.join(path_out, 'stft_processed', 'raw', dirry, 'target', '') +
+                np.save(os.path.join(path_out, 'stft_processed', 'raw', self.snr_dir, 'target', '') +
                         '{}_Ch-{}'.format(str(rir), str(i + 1)), ss[i])
-            np.save(os.path.join(path_out, 'stft_processed', 'raw', dirry, 'noise', '') +
+            np.save(os.path.join(path_out, 'stft_processed', 'raw', self.snr_dir, 'noise', '') +
                     '{}_{}_Ch-{}'.format(str(rir), self.noise, str(i + 1)), ns[i])
-            np.save(os.path.join(path_out, 'stft_processed', 'raw', dirry, 'mixture', '') +
+            np.save(os.path.join(path_out, 'stft_processed', 'raw', self.snr_dir, 'mixture', '') +
                     '{}_{}_Ch-{}'.format(str(rir), self.noise, str(i + 1)), ms[i])
-            np.save(os.path.join(path_out, 'stft_processed', 'normed', 'abs', dirry, 'mixture', '') +
+            np.save(os.path.join(path_out, 'stft_processed', 'normed', 'abs', self.snr_dir, 'mixture', '') +
                     '{}_{}_Ch-{}'.format(str(rir), self.noise, str(i + 1)), abs(ms[i]))
             # Mask
-            np.save(os.path.join(path_out, 'mask_processed', dirry, '') +
+            np.save(os.path.join(path_out, 'mask_processed', self.snr_dir, '') +
                     '{}_{}_Ch-{}'.format(str(rir), self.noise, str(i + 1)), masks[i])
         # SNR
-        np.save(os.path.join(path_out, 'log/snrs/dry', dirry, '') + '{}_{}'.format(str(rir), self.noise),
+        np.save(os.path.join(path_out, 'log', 'snrs', 'dry', self.snr_dir, '') + '{}_{}'.format(str(rir), self.noise),
                 self.snr_out[rir - self.rir_start, :])
-
-    def get_directory_name(self):
-        """From snr_range in self, return the name of the directory in form of 0-6 or 3-6_5-15"""
-        dirry = '_'.join(['{}-{}'.format(str(self.snr_range[k][0]), str(self.snr_range[k][1]))
-                          for k in range(len(self.snr_range))])  # e.g. '0-6_5-15' or '0-6'
-        return dirry
 
     def get_sir(self):
         """Loop over rir_start to rir_end and run get_node_sir"""
-        dirry = self.get_directory_name()
-        path_out = os.path.join(self.path_dataset, self.scene, self.case, 'log', 'snrs', 'cnv', dirry, '')
+        path_out = os.path.join(self.path_dataset, self.scene, self.case, 'log', 'snrs', 'cnv', self.snr_dir, '')
         for rir in range(self.rir_start, self.rir_start + self.nb_rir):
             if not os.path.isfile(path_out + '{}_{}.npy'.format(str(rir), self.noise)):
                 self.get_node_sir(rir)
@@ -167,20 +177,19 @@ class PostGenerator:
 
     def get_node_sir(self, rir):
         """Get SIR at each node"""
-        dirry = self.get_directory_name()
-        path_wav = os.path.join(self.path_dataset, self.scene, self.case, 'wav_processed', dirry, '')
-        sirs = np.zeros(4)
-        for i_nod in range(4):
-            ch_snrs = np.zeros(4)
-            for i_ch in range(4):
-                ch = i_nod * 4 + i_ch + 1
+        path_wav = os.path.join(self.path_dataset, self.scene, self.case, 'wav_processed', self.snr_dir, '')
+        sirs = np.zeros(self.n_nodes)
+        for i_nod in range(self.n_nodes):
+            ch_snrs = np.zeros(self.ch_per_node[i_nod])
+            for i_ch in range(self.ch_per_node[i_nod]):
+                ch = i_nod * self.ch_per_node[i_nod] + i_ch + 1
                 s, fs = sf.read(os.path.join(path_wav, 'target', '')
-                            + '{}_Ch-{}.wav'.format(str(rir), str(ch)))
+                                + '{}_Ch-{}.wav'.format(str(rir), str(ch)))
                 n = sf.read(os.path.join(path_wav, 'noise', '')
                             + '{}_{}_Ch-{}.wav'.format(str(rir), self.noise, str(ch)))[0]
                 siri = fw_snr(s, n, fs)
                 ch_snrs[i_ch] = siri[1]
             sirs[i_nod] = np.mean(ch_snrs)
         # Save the SIRs
-        np.save(os.path.join(self.path_dataset, self.scene, self.case, 'log', 'snrs', 'cnv', dirry, '') +
+        np.save(os.path.join(self.path_dataset, self.scene, self.case, 'log', 'snrs', 'cnv', self.snr_dir, '') +
                 '{}_{}'.format(str(rir), self.noise), sirs)
