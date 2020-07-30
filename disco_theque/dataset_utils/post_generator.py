@@ -166,30 +166,3 @@ class PostGenerator:
         np.save(os.path.join(path_out, 'log', 'snrs', 'dry', self.snr_dir, '') + '{}_{}'.format(str(rir), self.noise),
                 self.snr_out[rir - self.rir_start, :])
 
-    def get_sir(self):
-        """Loop over rir_start to rir_end and run get_node_sir"""
-        path_out = os.path.join(self.path_dataset, self.scene, self.case, 'log', 'snrs', 'cnv', self.snr_dir, '')
-        for rir in range(self.rir_start, self.rir_start + self.nb_rir):
-            if not os.path.isfile(path_out + '{}_{}.npy'.format(str(rir), self.noise)):
-                self.get_node_sir(rir)
-            else:
-                print('{} already done'.format(str(rir)))
-
-    def get_node_sir(self, rir):
-        """Get SIR at each node"""
-        path_wav = os.path.join(self.path_dataset, self.scene, self.case, 'wav_processed', self.snr_dir, '')
-        sirs = np.zeros(self.n_nodes)
-        for i_nod in range(self.n_nodes):
-            ch_snrs = np.zeros(self.ch_per_node[i_nod])
-            for i_ch in range(self.ch_per_node[i_nod]):
-                ch = i_nod * self.ch_per_node[i_nod] + i_ch + 1
-                s, fs = sf.read(os.path.join(path_wav, 'target', '')
-                                + '{}_Ch-{}.wav'.format(str(rir), str(ch)))
-                n = sf.read(os.path.join(path_wav, 'noise', '')
-                            + '{}_{}_Ch-{}.wav'.format(str(rir), self.noise, str(ch)))[0]
-                siri = fw_snr(s, n, fs)
-                ch_snrs[i_ch] = siri[1]
-            sirs[i_nod] = np.mean(ch_snrs)
-        # Save the SIRs
-        np.save(os.path.join(self.path_dataset, self.scene, self.case, 'log', 'snrs', 'cnv', self.snr_dir, '') +
-                '{}_{}'.format(str(rir), self.noise), sirs)
