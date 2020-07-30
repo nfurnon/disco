@@ -50,7 +50,7 @@ def db2lin(x, exp=1):
         Set `exp` to 1 to convert to power and to 2 to convert to magnitude
 
     Args:
-        x (np.ndarray): Quantity expressed in dB.
+        x (float, np.ndarray): Quantity expressed in dB.
         exp (int, optional):  (Default: 1)
 
     Returns:
