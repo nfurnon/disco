@@ -6,11 +6,6 @@ snr_range = [0, 6]
 SAVE_TAR = True
 
 
-def mix_sigs(rir_start, rir_nb, scene, noise_type):
-    pp = PostProcessor(rir_start, rir_nb, scene, noise_type, snr_range, path_dataset, save_target=SAVE_TAR)
-    pp.post_process()
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser("Parameters to parallelize the post processing of the database generation "
                                      "(mixing signals)")
@@ -34,4 +29,5 @@ if __name__ == '__main__':
     rir_start, nb_rir = args.rirs
     scene = args.scene
     noise = args.noise
-    mix_sigs(int(rir_start), int(nb_rir), scene, noise)
+    pp = PostProcessor(rir_start, nb_rir, scene, noise, snr_range, path_dataset, save_target=SAVE_TAR)
+    pp.post_process()
