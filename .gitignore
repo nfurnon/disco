@@ -4,3 +4,5 @@ __pycache__
 coverage_html_report
 doc/build
 doc/source/apidoc
+
+dataset
