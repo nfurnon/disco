@@ -1,7 +1,7 @@
 #!/bin/bash
 # Download LibriSpeech files from http://www.openslr.org/12/
 
-data_dir=../../dataset/corpus/
+data_dir=../../dataset/
 mkdir -p ${data_dir}
 declare -a sets=(test-clean.tar.gz train-clean-100.tar.gz train-clean-360.tar.gz)
 
