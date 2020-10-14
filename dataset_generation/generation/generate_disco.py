@@ -100,44 +100,6 @@ def mix_signals(room):
     return clean_reverbed_signals, mixed_reverbed_signals, room.rir
 
 
-def get_image_statistics(x):
-    """
-    Pre-generation function. Compute variance of signals x and their extrema
-    :param x:
-    :return:
-    """
-    x_var = np.var(x, axis=-1)
-    x_max = np.max(x, axis=-1)
-
-    return x_var, x_max
-
-
-def delay_vads(x, h):
-    """
-    Delay a signal x by the peak index of the transfer function h. To do so, pad 0s at the beginning of the signal.
-    Args:
-        np.ndarray: input signal (1D) to delay
-        np.ndarray: RIR (n_mic x n_sources x time)
-
-    Returns:
-        np.ndarray:  `n_mic` versions of `x` delayed (n_mic x time)
-    """
-    n_mics = np.shape(h)[0]
-    n_samp = np.maximum(np.max([len(h_) for h_ in np.array(h)[:, 0]]), np.max([len(h_) for h_ in np.array(h)[:, 1]]))
-    len_x_out = len(x) + n_samp - 1
-    if len_x_out % 2 == 1:      # See pra.room.py line 1066
-        len_x_out += 1
-    xs_delayed = np.zeros((n_mics, len_x_out))
-    for i_m in range(n_mics):
-        peak_id = np.argmax(np.array(h)[:, 0][i_m])
-        xs_delayed[i_m, :len(x) + len(np.array(h)[:, 0][i_m]) - 1] = np.pad(x,
-                                                                            (peak_id, len(np.array(h)[:, 0][i_m])
-                                                                                      - 1 - peak_id),
-                                                                            'constant', constant_values=0)
-
-    return xs_delayed
-
-
 def get_convolved_vads(x):
     """
     Compute VAD on image signals of the target.
@@ -240,7 +202,7 @@ def snr_at_mics(s, n, mics_per_node, fs=16000, vad_s=None, vad_n=None):
     # SNRs at all microphones
     for i_mic in range(n_mic):
         snrs[i_mic] = fw_snr(s[i_mic], n[i_mic], fs=fs, vad_tar=vad_s[i_mic], vad_noi=vad_n[i_mic])[1]
-    # SNRs at all nodes
+    # SNRs at all nodes (mean over the mics of the node)
     for i_nod in range(n_nodes):
         nodes_snr[i_nod] = np.mean(snrs[total_mics[i_nod]:total_mics[i_nod + 1]])
     # SNR differences between all nodes
@@ -386,15 +348,15 @@ if __name__ == "__main__":
     parser.add_argument('--dir_out', '-d',
                         help='directory where data will be saved',
                         type=str,
-                        default='tmp')
+                        default='../../dataset/disco/')
     args = parser.parse_args()
     dset = args.dset
     scenario = args.scenario
     i_rir, n_rir = args.rir_id
     root_dir = args.dir_out
 
-    path_to_freesound = '../../../../dataset/freesound/data/'
-    path_to_librispeech = '../../../../corpus/LibriSpeech/'
+    path_to_freesound = '../../dataset/freesound/data/'
+    path_to_librispeech = '../../dataset/LibriSpeech/'
 
     # %% DEFAULT ROOM PARAMETERS
     l_range, w_range, h_range, beta_range = (3, 8), (3, 5), (2.5, 3), (0.3, 0.6)
