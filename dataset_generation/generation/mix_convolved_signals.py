@@ -1,7 +1,7 @@
 import argparse
 from disco_theque.dataset_utils.post_generator import PostGenerator
 
-path_dataset = 'tmp/'
+path_dataset = '../../dataset/disco/'
 snr_range = [0, 6]
 SAVE_TAR = True
 
@@ -14,7 +14,7 @@ if __name__ == '__main__':
                         nargs=2,
                         type=int,
                         default=[1, 1])
-    parser.add_argument("--scene", "-s",
+    parser.add_argument("--scenario", "-s",
                         help="Spatial configuration",
                         type=str,
                         choices=['random', 'living', 'meeting'],

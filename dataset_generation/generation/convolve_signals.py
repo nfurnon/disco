@@ -340,7 +340,7 @@ if __name__ == "__main__":
                         choices=['random', 'living', 'meeting'],
                         type=str,
                         default='random')
-    parser.add_argument('--rir_id', '-r',
+    parser.add_argument('--rirs', '-r',
                         help='ID of the first RIR to create and number of RIRs to create.',
                         nargs=2,
                         type=int,
