@@ -1,11 +1,15 @@
 #!/bin/bash
-# Full pipeline to create the DISCO dataset:
+# Full pipeline to create the DISCO dataset [1]:
 # 1. Download the speech and noise signals
 # 2. Create the room configurations and corresponding RIRs; convovlve the speech and noise signals in the room
 # 3. Mix the speech and noise at desired SNR.
 
 # Example here is given for 10/3 files (train/test).
-# This can be easily changed, but for a big number of files, advised it to parallelize the process.
+# This can be easily changed, but for a big number of files, advised is to parallelize the process.
+#
+# [1] Furnon N., Serizel R., Illina I., Essid Slim.
+#     DNN-based mask estimation for distributed speech enhancement in spatially unconstrained microphone arrays.
+#     (submitted)
 
 # 1.
 cd pre_generation || exit
@@ -14,7 +18,7 @@ bash download_noises_from_zenodo.sh
 
 # 2.
 echo "Convolve the signals"
-cd ../generation || exit
+cd ../gen_disco || exit
 n_train=10
 rir_start_train=1
 n_test=3
