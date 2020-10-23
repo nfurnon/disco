@@ -10,19 +10,18 @@ code_dir=../../disco_theque/dnn
 set -v
 
 # Parameters
-scene=${1}
-noise=${2}
-weights=None
-nfiles=11001
-zsigs=${3}
-zfile=${4}
+scene=${1}      # meeting/living/random
+noise=${2}      # ssn/it/fs/noit/nofs/all
+zsigs=${3}      # zs_hat/zn_hat/'zs_hat zn_hat'
+weights=None    # Replace by the name of a model to fine-tune / continue training a model
 n_eps=150
+nfiles=11001
 
 # Get files to copy
 tmp_dir=/tmp/nfurnon/files_to_copy
 mkdir -p ${tmp_dir}
 $ppython ${code_dir}/data/lists_to_load.py --scene ${scene} --noise ${noise} --zsigs ${zsigs[@]}\
-                                           --path_list ${tmp_dir} --n_files ${nfiles} --zfile ${zfile}
+                                           --path_list ${tmp_dir} --n_files ${nfiles}
 files=$(ls ${tmp_dir})
 for file in ${files}
 do
@@ -49,5 +48,5 @@ done
 
 # Train NN
 $ppython -u ${code_dir}/engine/train.py --scene ${scene} --noise $noise --zsigs ${zsigs[@]} -n ${nfiles}\
-                                        --zfile ${zfile} -f2l ${tmp_dir} -path ${dir_data} -w ${weights} -epo ${n_eps}
+                                        -f2l ${tmp_dir} -path ${dir_data} -w ${weights} -epo ${n_eps}
 

@@ -213,12 +213,14 @@ def get_mask(y, ss, sn, sz=None, mask_type='irm1', mod=None, ts=None, **kwargs):
         y_inp = prepare_data(y, three_d_tensor, z_data=sz, frames_lost=lost_frames, **kwargs)
         m_stack = mod(y_inp).detach().numpy()
         m = reshape_mask(m_stack, kwargs['frame_to_pred'])
-    else:
+    elif mask_type == 'ivad':
         n_freq = np.shape(ss)[0]
         m = np.zeros(np.shape(ss))
         vad = vad_oracle_batch(ts, win_len=N_FFT, win_hop=N_HOP)
         vad = vad[::N_HOP]
         m[:, :len(vad)] = np.tile(vad, (n_freq, 1))
+    else:
+        raise ValueError('Unknown value for `mask_type`')
 
     return m
 
