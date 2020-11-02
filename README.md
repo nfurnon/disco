@@ -1,7 +1,7 @@
 ## DISCO -- DIStributed semi-COnstrained microphone arrays
 This repository gathers scripts to:
  * [download files](./dataset_generation/pre_generation) from [freesound](freesound.org/)
- * [Simulate microphone arrays and their recordings](./dataset_generation/generation) using [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics)
+ * Simulate microphone arrays and their recordings using [Pyroomacoustics](https://github.com/LCAV/pyroomacoustics)
 
 
 ### Install
@@ -25,61 +25,9 @@ __Note__: The installation of `soundfile` may fail as it requires `libsndfile`
 to be installed on the machine. To make it succeed, make sure `libsndfile` is
 installed before running `make install`.
 
-### To generate the DISCO dataset:
-__1. Download freesound files__
+### To generate datasets:
+Please refer to the [dedicated section](dataset_generation)
 
-Example:
-```bash
-python dataset_generation/pre_generation/download_freesound_queries.py \
-        --num_jobs 4 \
-        --save_dir ../../../dataset/freesound/data/train \
-        <freesound_token> \
-        config.yaml
-```
-
-For more information about the program, type
-
-```bash
-python dataset_generation/pre_generation/download_freesound_queries.py --help
-```
-
-__2. Simulate RIRs and convolve the signals__.
-The argument `--rir_nb` makes it possible to parallelize the process.
-
-Example:
-```
-python dataset_generation/generation/generate_disco.py --dset train \
-                                                       --scenario meeting \
-                                                       --rir_id 1 \
-                                                       --rir_nb 10 \
-                                                       --dir_out tmp
-```
-
-### Nota bene
-You will need the [LibriSpeech](http://www.openslr.org/12/) corpus, accessible from working directory and following the
-structure:
-
-```
- ──path_to_librispeech/
-    ├──test-clean
-    │   └──speaker_te1
-    │       ├──chapter1
-    │       │   ├──sentence1
-    │       │   ├──sentence2
-    │       │   │
-    │       │   └──sentenceS
-    │       │
-    │       └──chapterC
-    └──train-clean-360
-        └──speaker_tr1
-            ├──chapter1
-            │   ├──sentence1
-            │   ├──sentence2
-            │   │
-            │   └──sentenceS
-            │
-            └──chapterC
-```
 
 [conda_env]: https://docs.conda.io/projects/conda/en/latest/user-guide/tasks/manage-environments.html
 
@@ -106,3 +54,24 @@ To generate the documentation, type `make doc` from the command line.
 In case one wishes to generate a coverage report as well as the documentation,
 one simply needs to type `make` from the command line. Under the hood, the
 commands `make coverage` and `make doc` will be run.
+
+#### References
+[1] [DNN-based mask estimation for distributed speech enhancement in spatially unconstrained microphone arrays]()
+```BibTex
+@inproceedings{Furnon2020SE,
+    title={DNN-based mask estimation for distributed speech enhancement in spatially unconstrained microphone arrays},
+    author={Furnon, Nicolas and Serizel, Romain and Illina, Irina and Essid, Slim},
+    year={2020},
+    booktitle={submitted to TASLP},
+}
+```
+
+[2] [Distributed speech separation in spatially unconstrained microphone arrays](https://hal.archives-ouvertes.fr/hal-02985794)
+```BibTex
+@inproceedings{Furnon2020SE,
+    title={Distributed speech separation in spatially unconstrained microphone arrays},
+    author={Furnon, Nicolas and Serizel, Romain and Illina, Irina and Essid, Slim},
+    year={2020},
+    booktitle={submitted to ICASSP},
+}
+```

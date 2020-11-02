@@ -10,7 +10,7 @@ bash generate_disco.sh
 ```
 
 ### Generate the Meetit dataset
-The Meetit (MEETing with Interferent Talkers) dataset is described in our other submitted paper: [Distributed speech separation in spatially unconstrained microphone arrays](). It simulates typical meeting configurations, where several sources are talking around a table, with their recording devices placed on the same table.
+The Meetit (MEETing with Interferent Talkers) dataset is described in our other submitted paper: [Distributed speech separation in spatially unconstrained microphone arrays](https://hal.archives-ouvertes.fr/hal-02985794). It simulates typical meeting configurations, where several sources are talking around a table, with their recording devices placed on the same table.
 ```bash
 bash generate_meetit.sh
 ```

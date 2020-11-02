@@ -7,7 +7,8 @@
 # This can be easily changed, but for a big number of files, advised is to parallelize the process.
 #
 # [1] Furnon N., Serizel R., Illina I., Essid Slim.
-#     Distributed node-specific algorithm for speech separation in spatially distributed microphone arrays.
+#     Distributed speech separation in spatially unconstrained microphone arrays 
+# 	  https://hal.archives-ouvertes.fr/hal-02985794
 #     (submitted)
 
 # 1.
@@ -17,11 +18,19 @@ bash download_librispeech.sh
 # 2.
 echo "Convolve the signals"
 cd ../gen_meetit || exit
+dir_out=../../dataset/meetit/example
 n_train=10
 rir_start_train=1
 n_test=3
 rir_start_test=11001
+n_src=3
 echo "  train"
-echo "TODO (sorry)"
+python convolve_signals.py --dset train\
+						   -- rirs ${rir_start_train} ${n_train}\
+						   --n_src ${n_src}
+						   --dir_out ${dir_out}
 echo "  test"
-echo "TODO (sorry)"
+python convolve_signals.py --dset test\
+						   -- rirs ${rir_start_test} ${n_test}\
+						   --n_src ${n_src}
+						   --dir_out ${dir_out}

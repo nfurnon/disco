@@ -231,8 +231,6 @@ if __name__ == "__main__":
     i_rir, n_rirs_per_process = args.rirs
     n_sources = args.n_src
     dir_out = os.path.join(args.dir_out, dset)
-    starts = [1, 10001, 11001]
-    rir_start = starts[['train', 'val', 'test'].index(dset)]
     time.sleep((i_rir - 1)/55)
     rir_stop = int(i_rir + n_rirs_per_process - 1)
 

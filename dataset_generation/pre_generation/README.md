@@ -19,10 +19,25 @@ We provide a script to download [freesound](freesound.org/) files either from qu
 
 To get an access token, follow [these instructions](https://freesound.org/docs/api/authentication.html#oauth2-authentication). We will assume that our token is AbcD12eF.
 
-__Example:__ Serial download
+__Example 1:__ Serial download
 
 ```python
 python download_freesound_queries AbcD12eF config.yaml
 ```
 
+__Example 2:__ Parallel downloads
+
+```bash
+python download_freesound_queries.py \
+       --num_jobs 4 \
+       --save_dir ../../../dataset/freesound/data/train \
+       AbcD12eF \
+       config.yaml
+```
+
+For more information about the program, type
+
+```bash
+python download_freesound_queries.py --help
+```
 
