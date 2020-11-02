@@ -68,7 +68,7 @@ commands `make coverage` and `make doc` will be run.
 
 [2] [Distributed speech separation in spatially unconstrained microphone arrays](https://hal.archives-ouvertes.fr/hal-02985794)
 ```BibTex
-@inproceedings{Furnon2020SE,
+@inproceedings{Furnon2020SS,
     title={Distributed speech separation in spatially unconstrained microphone arrays},
     author={Furnon, Nicolas and Serizel, Romain and Illina, Irina and Essid, Slim},
     year={2020},
