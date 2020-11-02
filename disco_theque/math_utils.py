@@ -131,6 +131,27 @@ def my_mse(x, y):
     return np.mean(np.mean((x - y)**2, axis=-1))
 
 
+def my_stft(x):
+    """
+    Returns the librosa STFT with the parameters that I always use.
+    :param x:       (vector) Time signal
+    :return x_stft: (array) STFT matrix
+    """
+    return lb.core.stft(x, n_fft=512, hop_length=256, center=True)
+
+
+def my_istft(y, out_len):
+    """
+    Returns librosa iSTFT with the parameters that I always use.
+    Args:
+        y (np.ndarray): input STFT
+        out_len (int):  output length, as expected by lb.core.istft
+    Returns:
+        time signal
+    """
+    return lb.core.istft(y, hop_length=256, win_length=512, center=True, length=out_len)
+
+
 def next_pow_2(x):
     """Calculates the next power of 2 of a number.
 

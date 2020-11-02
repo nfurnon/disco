@@ -280,6 +280,7 @@ class MeetingRoomSetup(RandomRoomSetup):
         self.phi_ss_choice = phi_ss_choice
         self.d_nt, self.d_st, self.phi_t = None, None, None
         self.table_center, self.table_radius = None, None
+        self.d_max = None
 
     def get_table_position(self):
         """Places the table center and choses its diameter.
@@ -290,9 +291,9 @@ class MeetingRoomSetup(RandomRoomSetup):
         # Fix dimension of table
         r = self.r_range[0] + (self.r_range[1] - self.r_range[0]) * np.random.rand()
         # Fix distances of nodes and sources to table
-        d_max = np.minimum(self.d_nt_range[1], r - self.d_mn)  # If radius is small, avoid going beyond table center
-        self.d_nt = self.d_nt_range[0] + (d_max - self.d_nt_range[0]) * np.random.rand()
-        self.d_st = self.d_st_range[0] + (d_max - self.d_st_range[0]) * np.random.rand()
+        self.d_max = np.minimum(self.d_nt_range[1], r - self.d_mn)  # If radius is small, avoid going beyond the enter
+        self.d_nt = self.d_max / 2
+        self.d_st = self.d_st_range[0] + (self.d_max - self.d_st_range[0]) * np.random.rand()
         dt_min = self.d_sw + self.d_st + r  # Minimal distance to walls
         x_t = dt_min + (self.length - 2 * dt_min) * np.random.rand()  # Table center x
         y_t = dt_min + (self.width - 2 * dt_min) * np.random.rand()  # Table center y
@@ -316,16 +317,26 @@ class MeetingRoomSetup(RandomRoomSetup):
         # Position
         nodes_centers[:, :2] = circular_2D_array(table_center[:2], self.n_nodes, self.phi_t, table_radius - self.d_nt).T
         # Random shift (to avoid perfect circle)
-        nodes_centers -= table_center  # Center around 0
-        nodes_centers *= np.tile(0.95 + 0.1 * np.random.random((nodes_centers.shape[0],)), (3, 1)).T  # Translation
-        nodes_centers += table_center  # Re-center around table center
+        angles_proj = self.get_nodes_angles()[-1]
+        coords_to_add = -self.d_nt + (self.d_max - self.d_nt_range[0]) * np.random.rand(self.n_sources, 1)
+        nodes_centers[:, :2] += coords_to_add * angles_proj
         # Set height
         nodes_centers[:, -1] = table_center[-1]  # Nodes on the table
 
         return nodes_centers, 0
 
+    def get_nodes_angles(self):
+        """Return the angles of each node relative to the table center.
+        Returns:
+            angles (np.ndarray): angles of each node in rad (n_nodes x 1)
+            proj (np.ndarray): projections of the vector on the x, y axis (n_nodes x 2)
+        """
+        angles = self.phi_t + np.linspace(0, 2 * (self.n_sources - 1) * np.pi / self.n_sources, self.n_sources)
+        proj = np.array([np.cos(angles), np.sin(angles)]).T
+        return angles, proj
+
     def get_source_positions(self):
-        """Place two sources around the table and one third close to a wall.
+        """Place two sources around the table.
 
         self.node_centers should aready be not None.
         
@@ -438,4 +449,36 @@ class LivingRoomSetup(RandomRoomSetup):
                 return nodes_centers, n_trials
 
         return nodes_centers, n_trials
+
+
+class MeetitSetup(MeetingRoomSetup):
+    """
+    Class of a meeting room setup where the sources are in front of the nodes, and the nodes equally separated (the
+    distance between all nodes is constant).
+    """
+
+    def __init__(self, *args, **kwargs):
+        super(MeetitSetup, self).__init__(*args, **kwargs)
+
+    def get_source_positions(self):
+        """ Place the sources around the table in front of the nodes. `self.node_centers` should aready be not None.
+        Returns:
+            - sources_positions (np.ndarray):   sources positions (n_sources x (x, y, z))
+            - n_trials (int): Is equal to 0 if the positions are valid, to 100 otherwise (see `self.create_room_setup`)
+        """
+        sources_positions = np.zeros((self.n_nodes, 3))
+        sources_positions[:, :2] = circular_2D_array(self.table_center[:2],
+                                                     self.n_nodes,
+                                                     self.phi_t,
+                                                     self.table_radius + self.d_st).T
+        for i_s in range(self.n_sources):
+            sources_positions[i_s, -1] = self.z_range_s[0] + (self.z_range_s[1] - self.z_range_s[0]) * np.random.rand()
+        # Check that the sources are in the room
+        n_trials = 0
+        if (np.any(sources_positions[:, :2] <= self.d_sw)\
+            or np.any(sources_positions[:, 0] >= self.length - self.d_sw)\
+            or np.any(sources_positions[:, 1] >= self.width - self.d_sw)):
+            n_trials = 100
+
+        return np.array(sources_positions), n_trials
 

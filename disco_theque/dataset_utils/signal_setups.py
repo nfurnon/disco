@@ -3,7 +3,7 @@ import soundfile as sf
 from disco_theque.sigproc_utils import vad_oracle_batch, noise_from_signal, stack_talkers
 
 
-class SignalSetup:
+class SpeechAndNoiseSetup:
     """ Class of setup for what deals with the signals: SNR, corpus they are taken from, duration.
 
     It is based on a list-logic, that is to say that the WAV files are picked among the limited possibilities of a list.
@@ -152,4 +152,63 @@ class SignalSetup:
             self.source_snr[i_source] = self.snr_dry_range[i_source][0] \
                                         + (self.snr_dry_range[i_source][1] - self.snr_dry_range[i_source][0]) * alea
         return self.source_snr
+
+
+class InterferentSpeakersSetup:
+    """
+    Similar to `SignalSetup` but where all sources are interferent speakers, so no noise is needed.
+    Attention is paid that the same speaker is not taken twice in the same room.
+    """
+
+    def __init__(self, speakers_lists, duration_range, var_tar, snr_dry_range, snr_cnv_range,
+                 min_delta_snr):
+        self.speakers_list = speakers_lists
+        self.duration_range = duration_range  # min_dur, max_dur of signals (signals > min are padded to max)
+        self.speakers_ids, self.speakers_files = [], []
+        self.var_tar = var_tar  # Normalized variance of all target signals
+        self.snr_dry_range = snr_dry_range  # SNR range of dry signals (at loudspeakers)
+        self.snr_cnv_range = snr_cnv_range  # SNR range of convolved signals (at microphones)
+        self.min_delta_snr = min_delta_snr  # Maximum difference of SNRs between nodes
+        self.source_snr = np.zeros(np.shape(snr_dry_range)[0])
+        self.fs = None
+
+    def get_signal(self, duration):
+        """
+        Returns an interferent speaker, of duration `duration` and its VAD.
+        Args:
+            duration (int): expected duration of the file in seconds.
+
+        Returns:
+            y (np.ndarray) normalized vector of an interferent talker
+            vad_signal np.ndarray): VAD of `y`
+
+        """
+        assert (duration > 0), "Duration should be strictly positive"
+        sig_duration, n_trials = 0, 0
+        max_trials = 100
+        speaker_is_known = True
+        while sig_duration < duration and n_trials < max_trials or speaker_is_known:
+            speaker_file = np.random.choice(self.speakers_list)
+            sig_duration = sf.info(speaker_file).duration
+            speaker_id = speaker_file.split('/')[-3]
+            speaker_is_known = (speaker_id in self.speakers_ids)
+            n_trials += 1
+        if n_trials == max_trials:
+            raise ValueError("Failed to find a file lasting more that {} s. "
+                             "Please choose a shorter duration".format(duration))
+        else:
+            sig, fs = sf.read(speaker_file)
+            y = sig[:np.int(duration * fs)]              # signal at the end.
+            y -= np.mean(y)
+            # VAD
+            vad_signal = vad_oracle_batch(y, thr=0.001)
+            # Normalize the segment
+            y *= np.sqrt(self.var_tar / np.var(y[vad_signal == 1]))
+            # Update VAD (because of energy, no linear process and VAD is different)
+            vad_signal = vad_oracle_batch(y, thr=0.001)
+            self.speakers_ids.append(speaker_id)
+            self.speakers_files.append(speaker_file)
+            self.fs = fs
+
+        return y, vad_signal
 

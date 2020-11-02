@@ -1,50 +1,41 @@
 import os
-import sys
 import glob
 import time
+import argparse
 import numpy as np
 import soundfile as sf
 import matplotlib.pyplot as plt
-from code_utils.math_utils import db2lin, my_stft
-from code_utils.mask_utils import tf_mask
+from disco_theque.math_utils import db2lin, my_stft
 import pyroomacoustics as pra
-from code_utils.sigproc_utils import vad_oracle_batch
-from database_classes import SignalSetup, MeetitSetup
+from disco_theque.sigproc_utils import vad_oracle_batch, tf_mask
+from disco_theque.dataset_utils.room_setups import MeetitSetup
+from disco_theque.dataset_utils.signal_setups import InterferentSpeakersSetup
 from mir_eval.separation import bss_eval_sources as bss
 import ipdb
 
 
-# %%
-def create_directories(scene, case):
+FS = 16000
+
+
+def create_directories(out_path):
     """
     Create the directories where all the files will be saved
-    :param scene:
-    :param case:
-    :return:
     """
-    os.makedirs('/home/nfurnon/dataset/meetit/' + scene + '/' + case + '/log/infos/', exist_ok=True)
-    os.makedirs('/home/nfurnon/dataset/meetit/' + scene + '/' + case + '/wav/clean/dry', exist_ok=True)
-    os.makedirs('/home/nfurnon/dataset/meetit/' + scene + '/' + case + '/wav/clean/cnv/', exist_ok=True)
-
-    return os.path.join('/home/nfurnon/dataset/meetit/', scene, case, '')
+    os.makedirs(os.path.join(out_path, 'log', 'infos'), exist_ok=True)
+    os.makedirs(os.path.join(out_path, 'wav', 'clean', 'dry'), exist_ok=True)
+    os.makedirs(os.path.join(out_path, 'wav', 'clean', 'cnv'), exist_ok=True)
 
 
-def get_wavs_list(case):
+def get_wavs_list(path_to_speech_files, case):
     """
-    Return lists of wavs for the target and noise signals, as well as a list of speakers which one can pick from to
-    compute a SSN noise.
-    :param case:
-    :return:
+    Returns the list of all the potential files to load.
     """
     if case == 'test':
-        talkers_list = glob.glob('/home/nfurnon/corpus/LibriSpeech/audio/test-clean/*/*/*.flac')
+        talkers_list = glob.glob(path_to_speech_files + 'test-clean/*/*/*.flac')
     elif case == 'val':
-        talkers_list = glob.glob('/home/nfurnon/corpus/LibriSpeech/audio/dev-clean/*/*/*.flac')
+        talkers_list = glob.glob(path_to_speech_files + 'dev-clean/*/*/*.flac')
     elif case == 'train':
-        talkers_list = glob.glob('/home/nfurnon/corpus/LibriSpeech/audio/train-clean-360/*/*/*.flac')
-    else:
-        raise ValueError('`case` should be "test", "val" or "train"')
-    talkers_list.sort()
+        talkers_list = glob.glob(path_to_speech_files + 'train-clean-360/*/*/*.flac')
 
     return talkers_list
 
@@ -68,11 +59,6 @@ def get_value_range(i_rir, n_rirs, vmin=0, vmax=20, n_bins=5):
 def mix_signals(room):
     """ Simulate the room that has been instantiated. Return mixed signals at microphones, image signals (unmixed ones)
     and the RIR
-    :param room:                        pyroomacoustic's instance of room with mics and sources positions and sources
-                                        images.
-    :return clean_reverbed_signals:     Image signals
-            mixed_reberbed_signals:     Mixed signals
-            rirs:                       Room impulse response from every source to every microphone
     """
     room.image_source_model(use_libroom=True)
     room.compute_rir()
@@ -81,11 +67,9 @@ def mix_signals(room):
     return clean_reverbed_signals, room.rir
 
 
-def _get_convolved_vads(x):
+def get_convolved_vads(x):
     """
     Compute VAD on image signals of the target
-    :param  x:      Array of image signals we want to compute the VAD of. Time dimension is the last (2nd) one.
-    :return:
     """
     vads = np.zeros(x.shape)
     for i_m in range(vads.shape[0]):
@@ -127,43 +111,30 @@ def check_sir_validity(current_sirs, past_sirs, sir_classes, delta_sir=2):
         return True
 
 
-def simulate_room(room_setup, signal_setup, i_target_file, dset, mics_per_node, past_sirs, n_rirs_per_proc):
+def simulate_room(room_setup, signal_setup, dset, mics_per_node, past_sirs, n_rirs_per_proc):
     """
     Simulate the RIRs of a room with two or more noise sources.
-    We assume that there is only one target source and that all others are noise.
-    :param room_setup:
-    :param signal_setup:
-    :param i_target_file:
-    :return:
+    We consider only the cases where the SIRs are not too high not too low (see `check_sir_validity`) and that they are
+    somehow equally distributed.
     """
-    # Create signals
-    target_file = signal_setup.speakers_list[i_target_file]
-    target_source_signal, target_source_vad, fs = signal_setup.get_target_segment(target_file=target_file)
-    if target_source_signal is None:
-        return "redraw_source_signal"
-
     # Create room
     room = pra.ShoeBox([room_setup.length, room_setup.width, room_setup.height],
-                       fs=fs,
+                       fs=FS,
                        max_order=20,
                        absorption=room_setup.alpha)
 
     # Add microphones
     room.add_microphone_array(pra.MicrophoneArray(room_setup.microphones_positions, room.fs))
 
-    # First source (target source)
-    room.add_source(room_setup.source_positions[0], signal=target_source_signal)
-    room.source_vad = target_source_vad
-    # Other sources
-    for noise_source in range(room_setup.n_sources - 1):
-        noise_source_signal, noise_vad = signal_setup.get_noise_segment(duration=signal_setup.target_duration)
-        room.add_source(room_setup.source_positions[noise_source + 1], signal=noise_source_signal)
+    # Interferent sources
+    rnd_dur = signal_setup.duration_range[0]\
+              + (signal_setup.duration_range[1] - signal_setup.duration_range[0]) * np.random.rand()
+    for noise_source in range(room_setup.n_sources):
+        source_signal, noise_vad = signal_setup.get_signal(duration=rnd_dur)
+        room.add_source(room_setup.source_positions[noise_source], signal=source_signal)
 
     # Reverb signals, mix them
     image_signals, rirs = mix_signals(room)
-    # VAD of reverbed signal; better when computed on reverbed signal rather than shifting the source VAD
-    target_image_vad = _get_convolved_vads(image_signals[0])
-    room.image_vad = target_image_vad
 
     # Measure SIR
     sirs = np.zeros(len(mics_per_node))
@@ -183,20 +154,20 @@ def simulate_room(room_setup, signal_setup, i_target_file, dset, mics_per_node, 
     if not sirs_are_valid:
         return "redraw_room_setup"
 
-    if dset in ['train', 'val']:
-        len_max = int((signal_setup.duration_range[-1] + 1) * fs)
+    if dset in ['train', 'val']:  # Pad to max length so that it's easier to load in an array during a NN's training
+        len_max = int((signal_setup.duration_range[-1]) * signal_setup.fs)
         len_to_pad = np.maximum(len_max - image_signals.shape[-1], 0)
         image_signals = np.pad(image_signals, ((0, 0), (0, 0), (0, len_to_pad)), 'constant', constant_values=0)
         image_signals = image_signals[:, :, :len_max]    # truncate if necessary
 
-    return room, image_signals, target_image_vad, sirs
+    return room, image_signals, sirs
 
 
 def get_masks(sigs, mics_per_node, room):
     """
     Take STFT of sigs and compute the mask of each source for all nodes.
-    ASSUMPTIONS:
-        - First mic of each node is the reference mic
+    ASSUMPTION:
+        First mic of each node is the reference mic
     """
     n_sources = room.n_sources
     stfts, masks = [], [[] for _ in range(n_sources)]
@@ -218,17 +189,6 @@ def get_masks(sigs, mics_per_node, room):
 
 
 def save_data(sources, images, infos, id, path, fs=16000):
-    """
-    Ca devient un peu cochon ici. We only save the signals we might use. So in meeting scenario, SSN is saved for all
-    sources but interferent talker only for second source and freesound only for third source.
-    :param sources:     Source images of target and noise
-    :param images:      Image signals of all sources (n_sources x n_mics x n_samples)
-    :param infos:
-    :param path:
-    :param id:
-    :param fs:
-    :return:
-    """
     path_wav_clean = os.path.join(path, 'wav', 'clean', '')
     path_log = os.path.join(path, 'log', 'infos', '')
 
@@ -248,23 +208,35 @@ def save_data(sources, images, infos, id, path, fs=16000):
 
 
 if __name__ == "__main__":
-    # %% JOB PROPERTIES
-    dset = sys.argv[1]
-    if dset == 'train':
-        rir_start = 1
-    elif dset == 'val':
-        rir_start = 10001
-    else:
-        rir_start = 11001
-    scenario = sys.argv[2]
-    i_rir = int(sys.argv[3])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dset",
+                        type=str,
+                        choices=["train", "val", "test"],
+                        default="test")
+    parser.add_argument("--rirs", "-r",
+                        help="RIR ID and number of RIR to create",
+                        type=int,
+                        nargs=2,
+                        default=[1, 1])
+    parser.add_argument("--n_src", "-n",
+                        help="Number of sources",
+                        type=int,
+                        default=2)
+    parser.add_argument("--dir_out", "-do",
+                        help="Full path to the directory where the data will be saved",
+                        type=str,
+                        default="../../dataset/meetit/")
+    args = parser.parse_args()
+    dset = args.dset
+    i_rir, n_rirs_per_process = args.rirs
+    n_sources = args.n_src
+    dir_out = os.path.join(args.dir_out, dset)
+    starts = [1, 10001, 11001]
+    rir_start = starts[['train', 'val', 'test'].index(dset)]
     time.sleep((i_rir - 1)/55)
-    n_rirs_per_process = int(sys.argv[4])
-    n_prl_processes = int(sys.argv[5])
     rir_stop = int(i_rir + n_rirs_per_process - 1)
-    n_sources = int(sys.argv[6])     # NB There will be as many nodes as sources
 
-    root_out = create_directories(scenario, dset)       # Create dirs and return root to wav/
+    create_directories(dir_out)
 
     # Instantiate the room and signal classes
     l_range, w_range, h_range, beta_range = [3, 9], [3, 7], [2.5, 3], [0.3, 0.6]
@@ -285,40 +257,36 @@ if __name__ == "__main__":
                              r_range=r_range,
                              d_nt_range=d_nt_range, d_st_range=d_st_range)
 
-    # %% SIGNAL PARAMETERS
+    # Signal parameters
     duration_range = (7, 10)
     var_tar = db2lin(-23)
     snr_dry_range = np.array([[0, 0]])    # No influence in this script.
     snr_cnv_range = (-10, 15)
     min_delta_snr = 0
 
-    speakers_lists = get_wavs_list(dset)   # Same (ordered) lists for all // processes
+    path_to_wavs = '../../dataset/LibriSpeech/'
+    speakers_lists = get_wavs_list(path_to_wavs, dset)
 
     # Which SIR bin should be filled with this rir_start ?
     past_sirs = [[] for _ in range(n_sources)]
-    # %% CREATE SIGNALS FOR ALL REQUIRED IDs -- SAVE THEM
+    # Create signals for all required ids -- save them
     while i_rir <= rir_stop:
-        if not os.path.isfile(os.path.join(root_out, 'log', 'infos', '') + str(i_rir) + '.npy'):
-            signal_setup = SignalSetup(speakers_lists, duration_range, var_tar, snr_dry_range,
-                                       snr_cnv_range, min_delta_snr)
+        if not os.path.isfile(os.path.join(dir_out, 'log', 'infos', '') + str(i_rir) + '.npy'):
+            signal_setup = InterferentSpeakersSetup(speakers_lists, duration_range, var_tar, snr_dry_range,
+                                                    snr_cnv_range, min_delta_snr)
             # Create a room configuration with sources and microphones placed in it
             room_setup.create_room_setup()
             # Convolve the target signal i_file in the room and mix it with SSN noise
-            i_file = np.random.randint(len(signal_setup.speakers_list))
             function_output = simulate_room(room_setup,
                                             signal_setup,
-                                            i_file,
                                             dset,
                                             n_sensors_per_node,
                                             past_sirs,
                                             n_rirs_per_process)
-            if function_output == "redraw_source_signal":
-                i_file = np.random.randint(len(signal_setup.speakers_list))
-                continue
-            elif function_output == "redraw_room_setup":
+            if function_output == "redraw_room_setup":
                 continue
             # This is reached only if simulate_room was successful
-            room, images, image_target_vad, sirs = function_output
+            room, images, sirs = function_output
             for k in range(n_sources):
                 past_sirs[k].append(sirs[k])
 
@@ -330,7 +298,7 @@ if __name__ == "__main__":
                      'sources': room_setup.source_positions,
                      'sirs': sirs}
 
-            save_data(room.sources, images, infos, i_rir, root_out)
+            save_data(room.sources, images, infos, i_rir, dir_out)
         else:
             print(str(i_rir) + " already done")
         i_rir += 1

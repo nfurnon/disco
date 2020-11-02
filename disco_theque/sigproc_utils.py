@@ -8,7 +8,7 @@ from acoustics.signal import OctaveBand
 from disco_theque.math_utils import next_pow_2, lin2db, db2lin
 
 
-#%% VAD and mask
+# %% VAD and mask
 def vad_oracle_batch(x_, win_len=512, win_hop=256, thr=0.001, rat=2):
     """Estimates voice activity segments based on signal power.
 
@@ -86,7 +86,7 @@ def tf_mask(s, n, type='irm1', bin_thr=0):
     return m
 
 
-#%% Filterbanks
+# %% Filterbanks
 def third_octave_filterbank(F, fs, order=8):
     """Computes coefficients of a third-octave filter bank.
 
@@ -116,7 +116,7 @@ def third_octave_filterbank(F, fs, order=8):
     return b, a
 
 
-#%% Metric
+# %% Metrics
 def fw_snr(s, n, fs, vad_tar=None, vad_noi=None, clipping=1, db=True):
     """Computes the SNR weighted by the speech intelligibility as defined in [1].
 

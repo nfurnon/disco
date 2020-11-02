@@ -1,6 +1,5 @@
 import os
 import glob
-import time
 import argparse
 import numpy as np
 import soundfile as sf
@@ -8,7 +7,7 @@ import pyroomacoustics as pra
 from disco_theque.math_utils import db2lin
 from disco_theque.sigproc_utils import vad_oracle_batch, fw_snr, increase_to_snr
 from disco_theque.dataset_utils.room_setups import RandomRoomSetup, MeetingRoomSetup, LivingRoomSetup
-from disco_theque.dataset_utils.signal_setup import SignalSetup
+from disco_theque.dataset_utils.signal_setups import SpeechAndNoiseSetup
 
 
 # %%
@@ -150,7 +149,7 @@ def reverb_other_noises(room, signal_setup, dset='train'):
         # Select the noise
         noise_segment_ok = False
         while not noise_segment_ok:     # Some noises are so narrow-band that SNR is biased
-            n, n_file, n_file_start, vad_noise, fs = signal_setup.get_noise_segment(noise_name, target_duration)
+            n, n_file, n_file_start, vad_noise, fs = signal_setup.get_signal(noise_name, target_duration)
             n = increase_to_snr(room.sources[0].signal, n, signal_setup.source_snr[0],
                                 weight=True, vad_tar=room.source_vad, vad_noi=vad_noise, fs=fs)
             snr_check = fw_snr(room.sources[0].signal, n, fs,
@@ -253,8 +252,8 @@ def simulate_room(room_setup, signal_setup, noise_types, i_target_file, dset):
     room.add_source(room_setup.source_positions[0], signal=target_source_signal)
     room.source_vad = target_source_vad
     # Second source (first noise source)
-    noise_source_signal, _, _, noise_vad, _ = signal_setup.get_noise_segment(n_type="SSN",
-                                                                             duration=signal_setup.target_duration)
+    noise_source_signal, _, _, noise_vad, _ = signal_setup.get_signal(n_type="SSN",
+                                                                      duration=signal_setup.target_duration)
     noise_source_signal = increase_to_snr(target_source_signal, noise_source_signal,
                                           signal_setup.source_snr[0],
                                           weight=True, vad_tar=target_source_vad, vad_noi=noise_vad, fs=fs)
@@ -411,8 +410,8 @@ if __name__ == "__main__":
 
     target_list, talkers_list, noise_dict = get_wavs_list(path_to_freesound, path_to_librispeech, dset, scenario)
     np.random.seed(i_file)  # Don't pick the same noise for different RIR. Do it after speech lists are equally shuffled
-    signal_setup = SignalSetup(target_list, talkers_list, noise_dict, duration_range, var_tar, snr_dry_range,
-                               snr_cnv_range, min_delta_snr)
+    signal_setup = SpeechAndNoiseSetup(target_list, talkers_list, noise_dict, duration_range, var_tar, snr_dry_range,
+                                       snr_cnv_range, min_delta_snr)
 
     # %% CREATE SIGNALS FOR ALL REQUIRED IDs -- SAVE THEM
     save_path = os.path.join(root_dir, scenario, dset)
