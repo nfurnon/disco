@@ -1,5 +1,5 @@
 ### pre_generation
-This folder gathers scripts to download the files needed to generate the dataset of [our paper].
+This folder gathers scripts to download the files needed to generate the dataset of [our paper](https://arxiv.org/abs/2011.01714).
 
 We also provide a [script](download_freesound_queries.py) to download files from [Freesound](freesound.org), with their [API](https://freesound.org/help/developers/).
 
