@@ -12,9 +12,9 @@ import soundfile as sf
 import librosa as lb
 import numpy as np
 import torch
-from code_utils.metrics import fw_snr, fw_sd
-from code_utils.sigproc_utils import vad_oracle_batch
-from code_utils.se_utils.internal_formulas import intern_filter
+from disco_theque.metrics import fw_snr, fw_sd
+from disco_theque.sigproc_utils import vad_oracle_batch
+from disco_theque.se_utils.internal_formulas import intern_filter
 from disco_theque.dnn.utils import tf_mask
 from disco_theque.speech_enhancement.utils import prepare_data, plot_conf
 from disco_theque.dnn.models.heymann import build_heymann

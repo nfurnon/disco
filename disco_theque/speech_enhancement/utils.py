@@ -130,7 +130,12 @@ def prepare_data(y_data, three_d_tensor,
                     z_to_feed = z[:, iwin * win_hop:iwin * win_hop + win_len].T
                     y_out[iwin, :, (iz+1)*n_freq:(iz+2)*n_freq] = z_to_feed
 
-    return move_to_device(torch.from_numpy(y_out).float())
+    # Move to GPU / Keep on CPU
+    y_out = torch.from_numpy(y_out).float()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    y_out = y_out.to(device, non_blocking=True)
+
+    return y_out
 
 
 def plot_conf(infos, mics_per_node=[4, 4, 4, 4], return_fig=False):

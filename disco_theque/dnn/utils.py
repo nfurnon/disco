@@ -6,7 +6,7 @@ import torch
 import string
 import numpy as np
 from torch import nn
-from code_utils.math_utils import db2lin
+from disco_theque.math_utils import db2lin
 from disco_theque.dnn.models.crnn import build_crnn
 from disco_theque.dnn.engine.losses import reconstruction_loss
 
