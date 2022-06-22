@@ -1,7 +1,7 @@
 acoustics==0.2.4.post0
 coverage==5.1
 matplotlib==3.2.1
-numpy==1.18.1
+numpy==1.22.0
 pytest==5.4.3
 scipy==1.4.1
 SoundFile==0.10.3.post1
