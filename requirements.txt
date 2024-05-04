@@ -7,5 +7,5 @@ scipy==1.10.0
 SoundFile==0.10.3.post1
 sphinx-rtd-theme==0.4.3
 Sphinx==3.1.0
-tqdm==4.45.0
+tqdm==4.66.3
 mir_eval>=0.5
